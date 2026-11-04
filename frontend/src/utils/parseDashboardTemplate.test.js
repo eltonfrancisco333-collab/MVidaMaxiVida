@@ -34,13 +34,14 @@ test('the dashboard follows the completed-consultation payment workflow', async 
   assert.match(dashboard, /receiptNumber\|\|/);
 });
 
-test('administrators can edit a legacy patient process number', async () => {
+test('the dashboard displays automatic patient process number generation', async () => {
   const dashboard = await readFile(dashboardPath, 'utf8');
+  const bridge = await readFile(bridgePath, 'utf8');
 
-  assert.match(dashboard, /editProcess=ADM\(\)/);
-  assert.match(dashboard, /fi\('Nº Processo',htmlSafe\(x\.p\|\|''\),'text','f_p'\)/);
-  assert.match(dashboard, /Indique um número de processo único para este paciente/);
-  assert.match(dashboard, /const n=PA\.reduce/);
+  assert.match(dashboard, /O número de processo é gerado automaticamente/);
+  assert.match(dashboard, /PA\.push\(d\)/);
+  assert.doesNotMatch(dashboard, /id:'f_p'/);
+  assert.match(bridge, /savedBody = JSON\.stringify\(stateSnapshot\(\)\)/);
 });
 
 test('the services page lets administrators configure prices for every specialty', async () => {

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -164,11 +164,16 @@ test('a API migra IDs ausentes ou inválidos sem criar colisões', async (t) => 
   assert.deepEqual(state.payments.map((payment) => payment.id), [4, 5, 6]);
 });
 
-test('a API loads legacy duplicate patient identifiers but rejects saving them', async (t) => {
+test('a API repairs duplicate and invalid legacy patient identifiers on load', async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'mvida-duplicate-patients-'));
   const dataFile = path.join(directory, 'state.json');
   await writeFile(dataFile, JSON.stringify({
-    patients: [{ n: 'Paciente A', p: 'PTC-001' }, { n: 'Paciente B', p: 'PTC-001' }],
+    patients: [
+      { n: 'Paciente A', p: 'PTC-001' },
+      { n: 'Paciente B', p: 'PTC-001' },
+      { n: 'Paciente C', p: 'PTC--Infinity' },
+      { n: 'Paciente D' }
+    ],
     employees: [],
     users: [],
     appointments: [],
@@ -195,17 +200,21 @@ test('a API loads legacy duplicate patient identifiers but rejects saving them',
   const getResponse = await fetch(`${baseUrl}/api/state`);
   assert.equal(getResponse.status, 200);
   const legacyState = await getResponse.json();
-  assert.equal(legacyState.patients.length, 2);
+  assert.deepEqual(legacyState.patients.map((patient) => patient.p), [
+    'PTC-001', 'PTC-002', 'PTC-003', 'PTC-004'
+  ]);
+  assert.equal(legacyState._revision, 1);
+  const persistedState = JSON.parse(await readFile(dataFile, 'utf8'));
+  assert.deepEqual(persistedState.patients.map((patient) => patient.p), legacyState.patients.map((patient) => patient.p));
   const rejectedSave = await fetch(`${baseUrl}/api/state`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(legacyState)
   });
-  assert.equal(rejectedSave.status, 400);
-  assert.match((await rejectedSave.json()).error, /número de processo/i);
+  assert.equal(rejectedSave.status, 200);
 });
 
-test('an administrator can repair legacy duplicate patient identifiers', async (t) => {
+test('the API repairs corrupted process numbers and generates numbers for new patients', async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'mvida-repair-patient-identifiers-'));
   const dataFile = path.join(directory, 'state.json');
   const credentialsFile = path.join(directory, 'credentials.json');
@@ -251,24 +260,16 @@ test('an administrator can repair legacy duplicate patient identifiers', async (
   assert.equal(stateResponse.status, 200);
   const legacyState = await stateResponse.json();
 
-  const uncorrectedSave = await fetch(`${baseUrl}/api/state`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${administrator.token}` },
-    body: JSON.stringify(legacyState)
-  });
-  assert.equal(uncorrectedSave.status, 400);
-  assert.match((await uncorrectedSave.json()).error, /número de processo/i);
-
   const correctedState = structuredClone(legacyState);
-  correctedState.patients[1].p = 'PTC-002';
+  correctedState.patients.push({ n: 'Paciente C', e: 'c@example.org', t: '840000003' });
   const correctedSave = await fetch(`${baseUrl}/api/state`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${administrator.token}` },
     body: JSON.stringify(correctedState)
   });
   assert.equal(correctedSave.status, 200);
-  const savedState = await correctedSave.json();
-  assert.deepEqual(savedState.patients.map((patient) => patient.p), ['PTC--Infinity', 'PTC-002']);
+  let savedState = await correctedSave.json();
+  assert.deepEqual(savedState.patients.map((patient) => patient.p), ['PTC-001', 'PTC-002', 'PTC-003']);
 });
 
 test('a API aceita a correcção de nomes corrompidos sem desproteger pacientes associados', async (t) => {

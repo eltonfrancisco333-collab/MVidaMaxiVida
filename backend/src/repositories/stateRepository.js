@@ -1,6 +1,11 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { initialState, preventDeletingLinkedRecords, validateState } from '../domain/state.js';
+import {
+  initialState,
+  preventDeletingLinkedRecords,
+  repairPatientIdentifiers,
+  validateState
+} from '../domain/state.js';
 import { ApiError } from '../utils/errors.js';
 
 export class StateRepository {
@@ -43,6 +48,15 @@ export class StateRepository {
       if (saved && typeof saved === 'object' && !Array.isArray(saved)
         && (!Number.isSafeInteger(saved._revision) || saved._revision < 0)) saved._revision = 0;
       validateState(saved, { allowLegacyPatientIdentifiers: true });
+      const patientIdentifiersChanged = repairPatientIdentifiers(saved);
+      validateState(saved);
+      if (patientIdentifiersChanged) {
+        saved._revision += 1;
+        await mkdir(path.dirname(this.dataFile), { recursive: true });
+        const temporaryFile = `${this.dataFile}.${process.pid}.tmp`;
+        await writeFile(temporaryFile, JSON.stringify(saved, null, 2), 'utf8');
+        await rename(temporaryFile, this.dataFile);
+      }
       this.value = saved;
       this.persisted = true;
     } catch (error) {

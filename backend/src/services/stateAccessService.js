@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { ApiError } from '../utils/errors.js';
-import { collections, validateState } from '../domain/state.js';
+import { assignNewPatientIdentifiers, collections, validateState } from '../domain/state.js';
 
 const profiles = ['Administrador', 'Recepção', 'Médico', 'Financeiro'];
 const baseCollectionAccess = {
@@ -715,6 +715,8 @@ export class StateAccessService {
     const { state: current } = await this.stateService.getState();
     if (user.pf === 'Administrador') {
       const next = copy(submitted);
+      assignNewPatientIdentifiers(current.patients, next.patients);
+      validateState(next);
       validateAppointmentSchedule(current.appointments, next.appointments, next.employees, next.services);
       for (const patient of current.patients) {
         if (next.patients.some((candidate) => candidate.p === patient.p)) continue;
@@ -743,6 +745,7 @@ export class StateAccessService {
     const next = copy(current);
     if (user.pf === 'Recepção') {
       next.patients = mergeReceptionPatients(current.patients, submitted.patients);
+      assignNewPatientIdentifiers(current.patients, next.patients);
       next.appointments = mergeReceptionAppointments(current.appointments, submitted.appointments, current);
       next.payments = submitted.payments;
     } else if (user.pf === 'Médico') {
@@ -758,6 +761,7 @@ export class StateAccessService {
     } else {
       throw new ApiError(403, 'O perfil da conta não tem permissão para guardar dados.');
     }
+    validateState(next);
     if (user.pf !== 'Financeiro') applyAppointmentBillingRules(current, next);
     preventDeletingReferencedServices(current, next);
     enforceFinancialLedger(current.payments, next.payments, current, next, user, user.pf !== 'Financeiro');

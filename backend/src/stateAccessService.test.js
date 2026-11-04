@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { createApiServer } from './app.js';
+import { initialState } from './domain/state.js';
+import { StateAccessService } from './services/stateAccessService.js';
 
 const maputoDate = (offset) => {
   const date = new Date(Date.now() + offset * 24 * 60 * 60 * 1000);
@@ -15,6 +17,25 @@ const maputoDate = (offset) => {
   }).formatToParts(date).map(({ type, value }) => [type, value]));
   return `${parts.year}-${parts.month}-${parts.day}`;
 };
+
+test('a recepção recebe um número de processo gerado pelo servidor', async () => {
+  const current = { ...structuredClone(initialState), _revision: 1 };
+  let saved;
+  const access = new StateAccessService({
+    getState: async () => ({ state: structuredClone(current) }),
+    saveState: async (state) => {
+      saved = structuredClone(state);
+      return saved;
+    }
+  });
+  const submitted = structuredClone(current);
+  submitted.patients.push({
+    n: 'Paciente Novo', e: 'novo@example.org', t: '840000099', al: '', tb: ''
+  });
+
+  await access.saveState({ n: 'Recepção', pf: 'Recepção' }, submitted);
+  assert.equal(saved.patients[0].p, 'PTC-001');
+});
 
 test('a API isola dados por perfil e aplica estados de cobrança no servidor', async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'mvida-role-access-'));

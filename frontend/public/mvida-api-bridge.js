@@ -186,11 +186,13 @@
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Não foi possível guardar os dados.');
       stateRevision = Number.isSafeInteger(result._revision) && result._revision >= 0 ? result._revision : stateRevision;
+      let savedBody = currentBody;
       if (JSON.stringify(stateSnapshot()) === currentBody) {
         applyState(result);
         renderSavedState();
+        savedBody = JSON.stringify(stateSnapshot());
       }
-      lastSaved = currentBody;
+      lastSaved = savedBody;
     });
     saveQueue = operation.catch(() => {});
     await operation;
