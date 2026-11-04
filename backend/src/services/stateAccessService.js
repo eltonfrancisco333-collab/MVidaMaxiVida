@@ -22,9 +22,11 @@ const byName = (records, name) => records.find((record) => record.n === name);
 const patientReferenceFields = ['n', 'p', 't', 'ta', 'e', 'bi', 'nc', 'ca', 'st'];
 const clinicDayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const consultationPriceFor = (doctor, services) => {
-  const service = services.find((candidate) => candidate.active !== false
-    && candidate.name.trim().toLowerCase() === 'consulta' && candidate.specialty === doctor?.s);
-  return Number(service?.price) || Number(doctor?.p);
+  const consultationServices = services.filter((candidate) => candidate.name.trim().toLowerCase() === 'consulta'
+    && candidate.specialty === doctor?.s);
+  const service = consultationServices.find((candidate) => candidate.active !== false) || consultationServices[0];
+  if (service) return service.active === false ? 0 : Number(service.price);
+  return Number(doctor?.p);
 };
 
 function clinicDateTime() {
@@ -64,6 +66,11 @@ function validateAppointmentSchedule(currentAppointments, nextAppointments, empl
     if (!previous) {
       const expectedPrice = consultationPriceFor(employee, services);
       if (!Number.isSafeInteger(expectedPrice) || expectedPrice <= 0) {
+        const consultation = services.find((candidate) => candidate.name.trim().toLowerCase() === 'consulta'
+          && candidate.specialty === employee.s);
+        if (consultation?.active === false) {
+          throw new ApiError(400, 'A consulta desta especialidade está desactivada. Active o preço na tela Serviços.');
+        }
         throw new ApiError(400, 'Defina o preço da consulta na tela Serviços ou no cadastro do médico.');
       }
       if (Number(appointment.v) !== expectedPrice) {

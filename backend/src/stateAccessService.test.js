@@ -87,6 +87,26 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
   const protectedPriceRemoval = await request(administrator.token, 'PUT', consultationPriceRemoval);
   assert.equal(protectedPriceRemoval.status, 409);
 
+  const disabledConsultation = await (await request(administrator.token, 'GET')).json();
+  disabledConsultation.services.find((service) => service.id === 'consultation-clinical').active = false;
+  const disableConsultationResponse = await request(administrator.token, 'PUT', disabledConsultation);
+  assert.equal(disableConsultationResponse.status, 200);
+  const disabledConsultationState = await disableConsultationResponse.json();
+  assert.equal(disabledConsultationState.services.find((service) => service.id === 'consultation-clinical').active, false);
+  assert.equal(disabledConsultationState.appointments.find((appointment) => appointment.id === 'appointment-1').v, 52000);
+  const unavailableConsultation = structuredClone(disabledConsultationState);
+  unavailableConsultation.appointments.push({
+    id: 'appointment-disabled-specialty', d: secondAppointmentDate, h: '10:00', pac: 'Maria Teste',
+    med: 'Dra. Ana', esp: 'Clínica Geral', st: 'Agendada', mo: '', clinicalNote: '', v: 52000
+  });
+  const unavailableConsultationResponse = await request(administrator.token, 'PUT', unavailableConsultation);
+  assert.equal(unavailableConsultationResponse.status, 400);
+  assert.match((await unavailableConsultationResponse.json()).error, /consulta desta especialidade está desactivada/i);
+  const disabledStateAfterRejectedBooking = await (await request(administrator.token, 'GET')).json();
+  assert.equal(disabledStateAfterRejectedBooking.appointments.some((appointment) => appointment.id === 'appointment-disabled-specialty'), false);
+  disabledStateAfterRejectedBooking.services.find((service) => service.id === 'consultation-clinical').active = true;
+  assert.equal((await request(administrator.token, 'PUT', disabledStateAfterRejectedBooking)).status, 200);
+
   const temporaryPasswords = {};
   for (const email of ['doctor@example.org', 'reception@example.org', 'finance@example.org']) {
     const reset = await fetch(`${baseUrl}/api/users/password/reset`, {

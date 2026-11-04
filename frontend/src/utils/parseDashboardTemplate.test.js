@@ -43,6 +43,9 @@ test('the services page lets administrators configure prices for every specialty
   assert.match(dashboard, /Q\('\.svc-consultation-add'\)/);
   assert.match(dashboard, /svc-delete/);
   assert.match(dashboard, /svc-toggle/);
+  assert.match(dashboard, /svc-consultation-toggle/);
+  assert.match(dashboard, /Preço indisponível em Serviços/);
+  assert.match(dashboard, /consultationPrice\(doctor\)>0/);
   assert.match(dashboard, /serviceIsReferenced/);
   assert.match(dashboard, /service-page/);
 });
