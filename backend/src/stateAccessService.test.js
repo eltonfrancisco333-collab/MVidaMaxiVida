@@ -97,8 +97,6 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
   assert.ok(reception.user);
   assert.equal(reception.user.e, 'reception@example.org');
   assert.equal(reception.user.pf, 'Recepção');
-  const receptionViewWithoutSession = await request(reception.token, 'GET');
-  assert.equal(receptionViewWithoutSession.status, 200);
   const receptionStateResponse = await request(reception.token, 'GET');
   assert.equal(receptionStateResponse.status, 200);
   const receptionState = await receptionStateResponse.json();
