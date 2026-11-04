@@ -331,8 +331,8 @@
         return;
       }
       window.mvidaAuth.setSession(result);
-      USER = result.user;
       if (result.mustChangePassword) {
+        USER = result.user;
         openPasswordChange(true);
         return;
       }
@@ -344,7 +344,7 @@
         setFormError(loadError.message || 'Não foi possível carregar os dados.');
         return;
       }
-      entrar(USER);
+      entrar(result.user);
     };
 
     if (setupMode) showSetup();
@@ -359,7 +359,6 @@
     }
     repairKnownText(state);
     applyState(state);
-    USER = null;
     if (window.mvidaAuth.user?.pf === 'Administrador' && migrateAppointmentPayments()) {
       await saveState();
     }
