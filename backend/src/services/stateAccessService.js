@@ -1,18 +1,19 @@
+import { randomBytes } from 'node:crypto';
 import { ApiError } from '../utils/errors.js';
 import { collections, validateState } from '../domain/state.js';
 
 const profiles = ['Administrador', 'Recepção', 'Médico', 'Financeiro'];
 const baseCollectionAccess = {
   Administrador: new Set(collections),
-  Recepção: new Set(['patients', 'employees', 'appointments']),
+  Recepção: new Set(['patients', 'employees', 'appointments', 'payments', 'services']),
   Médico: new Set(['patients', 'employees', 'appointments']),
-  Financeiro: new Set(['patients', 'employees', 'appointments', 'payments', 'reports', 'services'])
+  Financeiro: new Set(['patients', 'employees', 'appointments', 'payments'])
 };
 const editableCollections = {
   Administrador: new Set(collections),
-  Recepção: new Set(['patients', 'appointments']),
+  Recepção: new Set(['patients', 'appointments', 'payments']),
   Médico: new Set(['appointments']),
-  Financeiro: new Set(['payments', 'reports'])
+  Financeiro: new Set()
 };
 
 const copy = (value) => structuredClone(value);
@@ -40,6 +41,8 @@ function roleView(state, user) {
       mo: '',
       clinicalNote: ''
     }));
+    view.payments = copy(state.payments);
+    view.services = copy(state.services);
   } else if (user.pf === 'Médico') {
     const employee = byName(state.employees, user.n);
     if (!employee || employee.f !== 'Médico') throw new ApiError(403, 'A conta não está associada a um médico.');
@@ -58,8 +61,6 @@ function roleView(state, user) {
       clinicalNote: ''
     }));
     view.payments = copy(state.payments);
-    view.reports = copy(state.reports);
-    view.services = copy(state.services);
   } else {
     throw new ApiError(403, 'O perfil da conta não tem acesso aos dados do sistema.');
   }
@@ -87,6 +88,9 @@ function enforceCollectionAccess(current, next, user) {
 }
 
 function mergeReceptionPatients(currentPatients, submittedPatients) {
+  if (currentPatients.some((patient) => !submittedPatients.some((next) => next.p === patient.p))) {
+    throw new ApiError(403, 'A recepção não pode eliminar pacientes; peça ao administrador para os desactivar.');
+  }
   const previous = new Map(currentPatients.map((patient) => [patient.p, patient]));
   const merged = submittedPatients.map((patient) => {
     const old = previous.get(patient.p);
@@ -120,6 +124,10 @@ function mergeReceptionAppointments(currentAppointments, submittedAppointments, 
     }
     const old = oldById.get(appointment.id);
     if (old) {
+      if (old.st !== 'Agendada'
+        && (appointment.d !== old.d || appointment.h !== old.h || appointment.st !== old.st)) {
+        throw new ApiError(409, 'Só é possível reagendar ou cancelar uma consulta ainda agendada.');
+      }
       if (appointment.mo || appointment.clinicalNote) {
         throw new ApiError(403, 'A recepção não pode alterar notas clínicas.');
       }
@@ -176,11 +184,29 @@ function mergeDoctorAppointments(currentAppointments, submittedAppointments, use
     if (unchangedFields.some((field) => !same(appointment[field], old[field]))) {
       throw new ApiError(403, 'O perfil médico só pode actualizar o estado clínico da consulta.');
     }
-    if (!['Agendada', 'Em curso', 'Concluída', 'Cancelada'].includes(appointment.st)) {
+    if (!['Agendada', 'Em curso', 'Concluída', 'Cancelada', 'Faltou'].includes(appointment.st)) {
       throw new ApiError(400, 'Estado de consulta inválido.');
     }
-    if (old.st !== 'Agendada' && old.st !== appointment.st) {
-      throw new ApiError(409, 'Só é possível actualizar uma consulta ainda agendada.');
+    const allowedTransitions = {
+      Agendada: ['Agendada', 'Em curso', 'Cancelada'],
+      'Em curso': ['Em curso', 'Concluída', 'Cancelada'],
+      'Concluída': ['Concluída'],
+      Cancelada: ['Cancelada'],
+      Faltou: ['Faltou']
+    };
+    if (!allowedTransitions[old.st]?.includes(appointment.st)) {
+      throw new ApiError(409, 'Transição de estado da consulta inválida.');
+    }
+    if (appointment.st === 'Concluída' && appointment.clinicalNote !== old.clinicalNote
+      && String(appointment.clinicalNote || '').trim().length < 3) {
+      throw new ApiError(400, 'Registe o diagnóstico antes de concluir a consulta.');
+    }
+    if (appointment.st === 'Concluída' && !String(appointment.clinicalNote || '').trim()) {
+      throw new ApiError(400, 'Registe o diagnóstico antes de concluir a consulta.');
+    }
+    if (appointment.clinicalNote !== old.clinicalNote
+      && (old.st !== 'Em curso' || appointment.st !== 'Concluída')) {
+      throw new ApiError(403, 'O diagnóstico só pode ser registado ao concluir a consulta.');
     }
   }
   if (currentAppointments.some((appointment) => appointment.med === user.n
@@ -190,13 +216,42 @@ function mergeDoctorAppointments(currentAppointments, submittedAppointments, use
   return submittedAppointments;
 }
 
-function enforceFinancialLedger(currentPayments, submittedPayments, currentState, nextState, allowConsultationCreation = false) {
+const paymentFields = [
+  'id', 'appointmentId', 'kind', 'd', 'pac', 'ds', 'v', 'st', 'm', 'med', 'serviceId',
+  'paidAt', 'refundReason', 'refundedAt', 'refundRequired', 'paymentDetails',
+  'receiptNumber', 'observations', 'registeredBy', 'registeredAt', 'voidedBy', 'voidedAt'
+];
+const letterCount = (value) => [...String(value || '').matchAll(/\p{L}/gu)].length;
+const paymentDetailIsValid = (method, details) => {
+  const value = String(details || '').trim();
+  if (method === 'Dinheiro') return !value;
+  if (method === 'Cartão') return /^\d{4}$/.test(value);
+  if (method === 'Transferência') return value.length > 0 && value.length <= 80;
+  if (method === 'Pagamento móvel') return /^(84|85)\d{7}$/.test(value);
+  return false;
+};
+const createReceiptNumber = (payments) => {
+  let number;
+  do {
+    number = `DIN${randomBytes(7).toString('hex').toUpperCase()}`;
+  } while (payments.some((payment) => payment.receiptNumber === number));
+  return number;
+};
+
+function enforceFinancialLedger(currentPayments, submittedPayments, currentState, nextState, user, allowConsultationCreation = false) {
   const oldById = new Map(currentPayments.map((payment) => [String(payment.id), payment]));
   const paymentIds = new Set();
+  const appointmentCharges = new Set();
   for (const payment of submittedPayments) {
     const id = String(payment.id);
     if (paymentIds.has(id)) throw new ApiError(400, 'Os identificadores das cobranças devem ser únicos.');
     paymentIds.add(id);
+    if (payment.kind === 'Consulta' && payment.appointmentId && payment.st !== 'Anulado') {
+      if (appointmentCharges.has(payment.appointmentId)) {
+        throw new ApiError(409, 'Uma consulta só pode ter uma cobrança associada.');
+      }
+      appointmentCharges.add(payment.appointmentId);
+    }
   }
   for (const payment of currentPayments) {
     if (!submittedPayments.some((next) => String(next.id) === String(payment.id))) {
@@ -207,8 +262,7 @@ function enforceFinancialLedger(currentPayments, submittedPayments, currentState
     const previous = oldById.get(String(payment.id));
     if (previous) {
       if (Object.keys(payment).some((field) => ![
-        'id', 'appointmentId', 'kind', 'd', 'pac', 'ds', 'v', 'st', 'm', 'med', 'serviceId',
-        'paidAt', 'refundReason', 'refundedAt', 'refundRequired'
+        ...paymentFields
       ].includes(field))) {
         throw new ApiError(400, 'A cobrança contém campos inválidos.');
       }
@@ -251,20 +305,73 @@ function enforceFinancialLedger(currentPayments, submittedPayments, currentState
       }
       if (!['Pendente', 'Pago', 'Anulado'].includes(payment.st)) throw new ApiError(400, 'Estado de pagamento inválido.');
       if (previous.st === 'Pendente' && payment.st === 'Pendente'
-        && (payment.m !== previous.m || !same(payment.paidAt, previous.paidAt))) {
-        throw new ApiError(403, 'Os dados de pagamento só podem ser preenchidos ao concluir a cobrança.');
+        && (payment.m !== previous.m || !same(payment.paidAt, previous.paidAt)
+          || payment.paymentDetails !== previous.paymentDetails
+          || payment.receiptNumber !== previous.receiptNumber
+          || payment.registeredBy !== previous.registeredBy
+          || payment.registeredAt !== previous.registeredAt
+          || payment.observations !== previous.observations)) {
+        throw new ApiError(403, 'Os dados do pagamento só podem ser registados ao concluir a cobrança.');
       }
-      if (previous.st === 'Pago' && payment.st === 'Anulado' && !String(payment.refundReason || '').trim()) {
-        throw new ApiError(400, 'Indique o motivo do estorno integral.');
+      if (previous.st === 'Anulado' && !same(payment, previous)) {
+        throw new ApiError(409, 'Uma cobrança anulada não pode ser alterada.');
+      }
+      if (previous.st === 'Pago' && payment.st === 'Pago') {
+        const changedFields = paymentFields.filter((field) => field !== 'observations'
+          && !same(payment[field], previous[field]));
+        if (changedFields.length) {
+          throw new ApiError(403, 'Um pagamento concluído é imutável; apenas as observações podem ser alteradas.');
+        }
       }
       if (previous.st === 'Pago' && payment.st === 'Anulado') {
-        payment.refundedAt = payment.refundedAt || new Date().toISOString().slice(0, 10);
+        if (user.pf !== 'Administrador') {
+          throw new ApiError(403, 'Só o administrador pode anular um pagamento concluído.');
+        }
+        if (letterCount(payment.refundReason) < 3) {
+          throw new ApiError(400, 'O motivo da anulação deve conter pelo menos três letras.');
+        }
+        payment.voidedBy = user.n;
+        payment.voidedAt = new Date().toISOString();
+        payment.refundedAt = payment.voidedAt.slice(0, 10);
       }
       if (previous.st === 'Pendente' && payment.st === 'Pago') {
+        if (!['Administrador', 'Recepção'].includes(user.pf)) {
+          throw new ApiError(403, 'Apenas a recepção ou o administrador podem registar pagamentos.');
+        }
+        if (payment.kind === 'Consulta' && (!appointment || appointment.st !== 'Concluída')) {
+          throw new ApiError(409, 'A consulta tem de estar concluída antes de registar o pagamento.');
+        }
+        if (!paymentDetailIsValid(payment.m, payment.paymentDetails)) {
+          throw new ApiError(400, 'Os dados exigidos para esta forma de pagamento são inválidos.');
+        }
         payment.paidAt = new Date().toISOString().slice(0, 10);
+        payment.receiptNumber = createReceiptNumber(submittedPayments);
+        payment.registeredBy = user.n;
+        payment.registeredAt = new Date().toISOString();
+        payment.refundedAt = undefined;
+        payment.voidedBy = undefined;
+        payment.voidedAt = undefined;
       }
       if (payment.st === 'Pago' && !['Dinheiro', 'Cartão', 'Transferência', 'Pagamento móvel'].includes(payment.m)) {
         throw new ApiError(400, 'Seleccione uma forma de pagamento válida.');
+      }
+      if (previous.st === 'Pendente' && payment.st === 'Anulado') {
+        const linkedAppointment = payment.appointmentId
+          ? nextState.appointments.find((candidate) => candidate.id === payment.appointmentId)
+          : null;
+        const automaticCancellation = payment.kind === 'Consulta'
+          && linkedAppointment
+          && ['Cancelada', 'Faltou'].includes(linkedAppointment.st)
+          && user.pf !== 'Financeiro';
+        if (user.pf !== 'Administrador' && !automaticCancellation) {
+          throw new ApiError(403, 'Só o administrador pode anular uma cobrança.');
+        }
+        if (!automaticCancellation && letterCount(payment.refundReason) < 3) {
+          throw new ApiError(400, 'O motivo da anulação deve conter pelo menos três letras.');
+        }
+        if (automaticCancellation) payment.refundReason = 'Consulta cancelada ou falta registada.';
+        payment.voidedBy = automaticCancellation ? 'Sistema' : user.n;
+        payment.voidedAt = new Date().toISOString();
       }
       continue;
     }
@@ -278,10 +385,13 @@ function enforceFinancialLedger(currentPayments, submittedPayments, currentState
       const appointment = nextState.appointments.find((candidate) => candidate.id === payment.appointmentId);
       if (!appointment || appointment.pac !== payment.pac || appointment.med !== payment.med
         || appointment.d !== payment.d || Number(appointment.v) !== payment.v
-        || ['Cancelada', 'Faltou'].includes(appointment.st)) {
-        throw new ApiError(400, 'A cobrança não corresponde à consulta agendada.');
+        || appointment.st !== 'Concluída') {
+        throw new ApiError(400, 'Só é possível criar uma cobrança para uma consulta concluída.');
       }
       continue;
+    }
+    if (!['Administrador', 'Recepção'].includes(user.pf)) {
+      throw new ApiError(403, 'Apenas a recepção ou o administrador podem criar cobranças.');
     }
     if (payment.kind !== 'Tratamento' || payment.st !== 'Pendente') {
       throw new ApiError(403, 'Só é possível criar cobranças de tratamento ou consulta pendentes.');
@@ -324,6 +434,55 @@ function preventDeletingReferencedServices(currentState, nextState) {
   }
 }
 
+function auditTimestamp(ip) {
+  const now = new Date();
+  return {
+    d: now.toISOString().slice(0, 10),
+    h: now.toISOString().slice(11, 16),
+    ip: ip || '—',
+    timestamp: now.toISOString()
+  };
+}
+
+function appendAuditEntries(current, submitted, next, user, ip) {
+  const entries = current.audit.map(copy);
+  const existing = new Set(current.audit.map((entry) => JSON.stringify(entry)));
+  const time = auditTimestamp(ip);
+  for (const entry of submitted.audit) {
+    if (existing.has(JSON.stringify(entry))) continue;
+    entries.unshift({
+      ...entry,
+      ...time,
+      u: user.n
+    });
+    existing.add(JSON.stringify(entry));
+  }
+
+  const previousPayments = new Map(current.payments.map((payment) => [String(payment.id), payment]));
+  for (const payment of next.payments) {
+    const previous = previousPayments.get(String(payment.id));
+    if (previous?.st === payment.st) continue;
+    if (payment.st === 'Pago') {
+      entries.unshift({
+        ...time,
+        u: payment.registeredBy || user.n,
+        op: 'Pagamento registado',
+        ds: `${payment.kind || 'Consulta'} de ${payment.pac} · ${payment.v} MT`,
+        nv: 'Sucesso'
+      });
+    } else if (payment.st === 'Anulado') {
+      entries.unshift({
+        ...time,
+        u: payment.voidedBy || user.n,
+        op: 'Anulação de pagamento',
+        ds: `${payment.pac} · ${payment.v} MT · ${payment.refundReason || 'Cobrança anulada'}`,
+        nv: 'Aviso'
+      });
+    }
+  }
+  next.audit = entries;
+}
+
 function applyAppointmentBillingRules(currentState, nextState) {
   const oldAppointments = new Map(currentState.appointments.map((appointment) => [appointment.id, appointment]));
   const appointmentIds = new Set();
@@ -337,21 +496,55 @@ function applyAppointmentBillingRules(currentState, nextState) {
       throw new ApiError(400, 'Cada consulta deve estar associada a um paciente e a um médico válidos.');
     }
     const previous = oldAppointments.get(appointment.id);
+    if (!nextState.payments.some((payment) => payment.appointmentId === appointment.id)) {
+      const legacyCharges = nextState.payments.filter((payment) => !payment.appointmentId
+        && payment.kind !== 'Tratamento'
+        && payment.pac === appointment.pac
+        && payment.med === appointment.med
+        && payment.d === (previous?.d || appointment.d)
+        && /consulta/i.test(payment.ds || ''));
+      if (legacyCharges.length === 1) {
+        legacyCharges[0].appointmentId = appointment.id;
+        legacyCharges[0].kind = 'Consulta';
+      }
+    }
     if (!previous) {
       if (!appointment.id) throw new ApiError(400, 'A consulta precisa de um identificador.');
-      appointment.v = Number.isSafeInteger(appointment.v) && appointment.v > 0
-        ? appointment.v
-        : Number(employee.p) || 30000;
-    } else if (previous.st === 'Cancelada' || previous.st === 'Faltou') {
-      if (appointment.st !== previous.st) throw new ApiError(409, 'Uma consulta cancelada ou com falta não pode ser reactivada; crie uma nova marcação.');
-    } else if (previous.st !== appointment.st && previous.st !== 'Agendada') {
-      throw new ApiError(409, 'O estado final de uma consulta não pode ser alterado.');
-    } else if (previous.st === 'Agendada' && ['Cancelada', 'Faltou'].includes(appointment.st)) {
-      const charge = nextState.payments.find((payment) => payment.appointmentId === appointment.id);
-      if (charge?.st === 'Pendente') charge.st = 'Anulado';
-      if (charge?.st === 'Pago') {
-        charge.refundRequired = true;
+      if (appointment.st !== 'Agendada') {
+        throw new ApiError(400, 'Uma nova consulta deve começar no estado Agendada.');
       }
+      appointment.v = Number(employee.p) || 30000;
+    } else {
+      appointment.v = previous.v;
+      const allowedTransitions = {
+        Agendada: ['Agendada', 'Em curso', 'Cancelada', 'Faltou'],
+        'Em curso': ['Em curso', 'Concluída', 'Cancelada'],
+        'Concluída': ['Concluída'],
+        Cancelada: ['Cancelada'],
+        Faltou: ['Faltou']
+      };
+      if (!allowedTransitions[previous.st]?.includes(appointment.st)) {
+        throw new ApiError(409, 'Transição de estado da consulta inválida.');
+      }
+      if (appointment.clinicalNote !== previous.clinicalNote
+        && (previous.st !== 'Em curso' || appointment.st !== 'Concluída')) {
+        throw new ApiError(403, 'O diagnóstico só pode ser registado ao concluir a consulta.');
+      }
+      if (previous.st !== 'Concluída' && appointment.st === 'Concluída'
+        && letterCount(appointment.clinicalNote) < 3) {
+        throw new ApiError(400, 'Registe o diagnóstico antes de concluir a consulta.');
+      }
+      if (previous.st !== 'Agendada' && (appointment.d !== previous.d || appointment.h !== previous.h)) {
+        throw new ApiError(409, 'Só é possível reagendar uma consulta ainda agendada.');
+      }
+    }
+    if (['Cancelada', 'Faltou'].includes(appointment.st)) {
+      const charge = nextState.payments.find((payment) => payment.appointmentId === appointment.id);
+      if (charge?.st === 'Pendente') {
+        charge.st = 'Anulado';
+        charge.refundReason = 'Consulta cancelada ou falta registada.';
+      }
+      if (charge?.st === 'Pago') charge.refundRequired = true;
     }
 
     const collision = nextState.appointments.some((candidate) => candidate !== appointment
@@ -368,8 +561,8 @@ function applyAppointmentBillingRules(currentState, nextState) {
       throw new ApiError(400, 'O valor da consulta deve ser um número inteiro positivo.');
     }
 
-    let charge = nextState.payments.find((payment) => payment.appointmentId === appointment.id);
-    if (!charge && !['Cancelada', 'Faltou'].includes(appointment.st)) {
+    let charge = nextState.payments.find((payment) => payment.appointmentId === appointment.id && payment.st !== 'Anulado');
+    if (!charge && appointment.st === 'Concluída') {
       charge = {
         id: Math.max(0, ...nextState.payments.map((payment) => Number(payment.id) || 0)) + 1,
         appointmentId: appointment.id,
@@ -385,11 +578,16 @@ function applyAppointmentBillingRules(currentState, nextState) {
       nextState.payments.push(charge);
     }
     if (charge?.st === 'Pendente') {
-      charge.d = appointment.d;
-      charge.pac = appointment.pac;
-      charge.ds = `Consulta · ${appointment.esp}`;
-      charge.v = Number(appointment.v);
-      charge.med = appointment.med;
+      if (['Cancelada', 'Faltou'].includes(appointment.st)) {
+        charge.st = 'Anulado';
+        charge.refundReason = 'Consulta cancelada ou falta registada.';
+      } else {
+        charge.d = appointment.d;
+        charge.pac = appointment.pac;
+        charge.ds = `Consulta · ${appointment.esp}`;
+        charge.v = Number(appointment.v);
+        charge.med = appointment.med;
+      }
     }
   }
 }
@@ -405,15 +603,32 @@ export class StateAccessService {
     return { ...result, state: roleView(result.state, user) };
   }
 
-  async saveState(user, submitted, options) {
+  async saveState(user, submitted, options = {}) {
     validateState(submitted);
     validateServices(submitted.services);
     const { state: current } = await this.stateService.getState();
     if (user.pf === 'Administrador') {
       const next = copy(submitted);
+      for (const patient of current.patients) {
+        if (next.patients.some((candidate) => candidate.p === patient.p)) continue;
+        const hasActivity = current.appointments.some((appointment) => appointment.pac === patient.n)
+          || current.payments.some((payment) => payment.pac === patient.n)
+          || current.audit.some((entry) => `${entry.op || ''} ${entry.ds || ''}`.includes(patient.n));
+        if (hasActivity) {
+          throw new ApiError(409, `Não é possível eliminar ${patient.n}; desactive o paciente para preservar o histórico.`);
+        }
+      }
+      for (const employee of current.employees) {
+        if (next.employees.some((candidate) => candidate.n === employee.n)) continue;
+        if (current.appointments.some((appointment) => appointment.med === employee.n)
+          || current.audit.some((entry) => entry.u === employee.n)) {
+          throw new ApiError(409, `Não é possível eliminar ${employee.n}; passe o funcionário a Inactivo para preservar o histórico.`);
+        }
+      }
       applyAppointmentBillingRules(current, next);
       preventDeletingReferencedServices(current, next);
-      enforceFinancialLedger(current.payments, next.payments, current, next, true);
+      enforceFinancialLedger(current.payments, next.payments, current, next, user, true);
+      appendAuditEntries(current, next, next, user, options.ip);
       return this.stateService.saveState(next, options);
     }
 
@@ -422,6 +637,7 @@ export class StateAccessService {
     if (user.pf === 'Recepção') {
       next.patients = mergeReceptionPatients(current.patients, submitted.patients);
       next.appointments = mergeReceptionAppointments(current.appointments, submitted.appointments, current);
+      next.payments = submitted.payments;
     } else if (user.pf === 'Médico') {
       next.appointments = mergeDoctorAppointments(
         current.appointments.filter((appointment) => appointment.med === user.n),
@@ -431,14 +647,14 @@ export class StateAccessService {
       const retained = current.appointments.filter((appointment) => appointment.med !== user.n);
       next.appointments = [...retained, ...next.appointments];
     } else if (user.pf === 'Financeiro') {
-      next.payments = submitted.payments;
-      next.reports = submitted.reports;
+      throw new ApiError(403, 'O perfil Financeiro pode consultar os pagamentos, mas não os pode registar nem alterar.');
     } else {
       throw new ApiError(403, 'O perfil da conta não tem permissão para guardar dados.');
     }
     if (user.pf !== 'Financeiro') applyAppointmentBillingRules(current, next);
     preventDeletingReferencedServices(current, next);
-    enforceFinancialLedger(current.payments, next.payments, current, next, user.pf !== 'Financeiro');
+    enforceFinancialLedger(current.payments, next.payments, current, next, user, user.pf !== 'Financeiro');
+    appendAuditEntries(current, submitted, next, user, options.ip);
     return this.stateService.saveState(next, options);
   }
 }
