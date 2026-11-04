@@ -33,3 +33,12 @@ test('the dashboard follows the completed-consultation payment workflow', async 
   assert.match(dashboard, /Só a recepção ou o administrador podem registar pagamentos/);
   assert.match(dashboard, /receiptNumber\|\|/);
 });
+
+test('the services page lets administrators configure prices for every specialty', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+
+  assert.match(dashboard, /rows\.push\(\{name:'Consulta',specialty/);
+  assert.match(dashboard, /svc-consultation-add/);
+  assert.match(dashboard, /Definir preço/);
+  assert.match(dashboard, /Q\('\.svc-consultation-add'\)/);
+});
