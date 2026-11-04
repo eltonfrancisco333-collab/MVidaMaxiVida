@@ -1,6 +1,6 @@
 import { ApiError } from '../utils/errors.js';
 
-export const collections = ['patients', 'employees', 'users', 'appointments', 'payments', 'audit', 'reports'];
+export const collections = ['patients', 'employees', 'users', 'appointments', 'payments', 'audit', 'reports', 'services'];
 export const initialState = Object.fromEntries(collections.map((name) => [name, []]));
 
 export function validateState(state) {
@@ -32,6 +32,12 @@ export function preventDeletingLinkedRecords(current, next) {
     }
     if (!employeeNames.has(appointment.med)) {
       throw new ApiError(409, `Não é possível eliminar o médico ${appointment.med}, pois está associado a uma consulta.`);
+    }
+
+    for (const payment of current.payments) {
+      if (!next.payments.some((record) => String(record.id) === String(payment.id))) {
+        throw new ApiError(409, 'Os registos de cobrança devem ser anulados, não eliminados.');
+      }
     }
   }
 }

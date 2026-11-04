@@ -23,13 +23,15 @@
     appointments: CO,
     payments: PG,
     audit: AU,
-    reports: RL
+    reports: RL,
+    services: SERVICES
   });
   const collections = Object.keys(stateSnapshot());
   let lastSaved = '';
   let saveTimer;
   let saveQueue = Promise.resolve();
   let authToken = '';
+  let systemConfigured = false;
 
   async function accountRequest(path, body) {
     const response = await fetch(path, {
@@ -48,6 +50,7 @@
   window.mvidaAuth = {
     setSession(result) {
       authToken = result.token;
+      this.user = result.user;
       MUST_CHANGE_PASSWORD = result.mustChangePassword === true;
     },
     resetPassword(email) {
@@ -57,8 +60,9 @@
       return accountRequest('/api/users/access', { email, profile, status });
     },
     changePassword(currentPassword, newPassword) {
-      return accountRequest('/api/auth/change-password', { currentPassword, newPassword }).then((result) => {
+      return accountRequest('/api/auth/change-password', { currentPassword, newPassword }).then(async (result) => {
         this.setSession(result);
+        await loadAuthenticatedState();
         return result;
       });
     },
@@ -68,7 +72,18 @@
     },
     clearSession() {
       authToken = '';
+      this.user = null;
       MUST_CHANGE_PASSWORD = false;
+      PA = [];
+      FU = [];
+      US = [];
+      CO = [];
+      PG = [];
+      AU = [];
+      RL = [];
+      SERVICES = [];
+      lastSaved = JSON.stringify(stateSnapshot());
+      renderSavedState();
     }
   };
 
@@ -143,7 +158,19 @@
     ic();
   }
 
+  function applyState(state) {
+    PA = state.patients;
+    FU = state.employees;
+    US = state.users;
+    CO = state.appointments;
+    PG = state.payments;
+    AU = state.audit;
+    RL = state.reports;
+    SERVICES = state.services;
+  }
+
   async function saveState() {
+    if (!authToken) return;
     const body = JSON.stringify(stateSnapshot());
     if (body === lastSaved) return;
     const operation = saveQueue.catch(() => {}).then(async () => {
@@ -151,11 +178,15 @@
       if (currentBody === lastSaved) return;
       const response = await fetch('/api/state', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken },
         body: currentBody
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Não foi possível guardar os dados.');
+      if (JSON.stringify(stateSnapshot()) === currentBody) {
+        applyState(result);
+        renderSavedState();
+      }
       lastSaved = JSON.stringify(result);
     });
     saveQueue = operation.catch(() => {});
@@ -200,7 +231,7 @@
     confirmInput.setAttribute('aria-label', confirmInput.placeholder);
     confirmInput.autocomplete = 'new-password';
     confirmField.append(confirmIcon, confirmInput);
-    let setupMode = US.length === 0;
+    let setupMode = !systemConfigured;
 
     function showLogin() {
       setupMode = false;
@@ -269,9 +300,15 @@
           return;
         }
         window.mvidaAuth.setSession(result);
-        US.push(result.user);
+        systemConfigured = true;
+        try {
+          await loadAuthenticatedState();
+        } catch (loadError) {
+          window.mvidaAuth.clearSession();
+          setFormError(loadError.message || 'Não foi possível carregar os dados.');
+          return;
+        }
         USER = result.user;
-        lastSaved = JSON.stringify(stateSnapshot());
         nameInput.value = '';
         confirmInput.value = '';
         password.value = '';
@@ -281,7 +318,6 @@
       }
 
       const address = email.value.trim().toLowerCase();
-      const user = US.find((candidate) => candidate.e.toLowerCase() === address);
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -289,13 +325,23 @@
       });
       const result = await response.json();
       if (!response.ok) {
-        setFormError(user && !user.authManaged
-          ? 'Esta conta ainda não tem uma palavra-passe. Peça ao administrador para criar ou repor o acesso.'
-          : result.error || 'E-mail ou palavra-passe incorrectos.');
+        setFormError(result.error || 'E-mail ou palavra-passe incorrectos.');
         return;
       }
       window.mvidaAuth.setSession(result);
       USER = result.user;
+      if (result.mustChangePassword) {
+        entrar(USER);
+        return;
+      }
+      try {
+        await loadAuthenticatedState();
+      } catch (loadError) {
+        window.mvidaAuth.clearSession();
+        USER = null;
+        setFormError(loadError.message || 'Não foi possível carregar os dados.');
+        return;
+      }
       entrar(USER);
     };
 
@@ -303,54 +349,29 @@
     else showLogin();
   }
 
+  async function loadAuthenticatedState() {
+    const response = await fetch('/api/state', { headers: { Authorization: 'Bearer ' + authToken } });
+    const state = await response.json();
+    if (!response.ok || !isCompatibleState(state)) {
+      throw new Error(state.error || 'Não foi possível carregar os dados autorizados para esta conta.');
+    }
+    repairKnownText(state);
+    applyState(state);
+    USER = null;
+    if (window.mvidaAuth.user?.pf === 'Administrador' && migrateAppointmentPayments()) {
+      await saveState();
+    }
+    renderSavedState();
+    lastSaved = JSON.stringify(stateSnapshot());
+  }
+
   async function connect() {
-    const response = await fetch('/api/state');
-    let state = await response.json();
-    if (!response.ok) throw new Error(state.error || 'Não foi possível carregar os dados.');
-    let loadedFromServer = response.headers.get('X-MVida-Data-Source') !== 'seed';
-    let savedStateBody = JSON.stringify(state);
-
-    if (!loadedFromServer) {
-      const migrationResponse = await fetch('/api/state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(state)
-      });
-      const saved = await migrationResponse.json();
-      if (!migrationResponse.ok) {
-        if (migrationResponse.status !== 409) throw new Error(saved.error || 'Não foi possível guardar os dados iniciais.');
-        const latestResponse = await fetch('/api/state');
-        state = await latestResponse.json();
-        if (!latestResponse.ok || !isCompatibleState(state)) {
-          throw new Error(state.error || 'Os dados guardados no servidor são incompatíveis com o dashboard original.');
-        }
-        loadedFromServer = true;
-      } else {
-        state = saved;
-        savedStateBody = JSON.stringify(state);
-        loadedFromServer = true;
-      }
-    } else if (!isCompatibleState(state)) {
-      throw new Error('Os dados guardados no servidor são incompatíveis com o dashboard original.');
-    }
-
-    if (loadedFromServer) {
-      repairKnownText(state);
-      PA = state.patients;
-      FU = state.employees;
-      US = state.users;
-      CO = state.appointments;
-      PG = state.payments;
-      AU = state.audit;
-      RL = state.reports;
-      migrateAppointmentPayments();
-      USER = null;
-      renderSavedState();
-    }
-    lastSaved = loadedFromServer ? savedStateBody : JSON.stringify(stateSnapshot());
+    const response = await fetch('/api/setup/status');
+    const status = await response.json();
+    if (!response.ok) throw new Error(status.error || 'Não foi possível verificar a configuração do sistema.');
+    systemConfigured = status.configured;
     window.addEventListener('mvida:data-change', scheduleSave);
     new MutationObserver(scheduleSave).observe(document.body, { childList: true, subtree: true });
-    if (loadedFromServer && lastSaved !== JSON.stringify(stateSnapshot())) await saveState();
     document.body.classList.add('auth-pending');
     installAccountAccess();
     overlay.remove();

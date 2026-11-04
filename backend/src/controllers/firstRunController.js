@@ -10,11 +10,13 @@ export function createFirstRunController(firstRunService) {
       return sendJson(response, 200, { success: true });
     }
     if (requestUrl.pathname === '/api/users/password/reset') {
+      await firstRunService.assertPasswordChanged(token);
       const input = await readJsonBody(request);
       const result = await firstRunService.resetUserPassword(token, input);
       return sendJson(response, 200, result);
     }
     if (requestUrl.pathname === '/api/users/access') {
+      await firstRunService.assertPasswordChanged(token);
       const input = await readJsonBody(request);
       const user = await firstRunService.updateUserAccess(token, input);
       return sendJson(response, 200, { user });
@@ -23,6 +25,9 @@ export function createFirstRunController(firstRunService) {
       const input = await readJsonBody(request);
       const result = await firstRunService.changePassword(token, input);
       return sendJson(response, 200, result);
+    }
+    if (requestUrl.pathname === '/api/setup/status') {
+      return sendJson(response, 200, await firstRunService.getSetupStatus());
     }
     const input = await readJsonBody(request);
     if (requestUrl.pathname === '/api/setup') {

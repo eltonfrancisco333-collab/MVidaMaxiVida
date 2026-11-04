@@ -8,7 +8,7 @@ import { createApiServer } from './app.js';
 test('a API persiste o modelo de dados do dashboard e protege a migração inicial', async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'mvida-api-'));
   const dataFile = path.join(directory, 'state.json');
-  const server = createApiServer({ dataFile, credentialsFile: path.join(directory, 'credentials.json') });
+  const server = createApiServer({ dataFile, credentialsFile: path.join(directory, 'credentials.json'), allowUnauthenticatedState: true });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(0, '127.0.0.1', resolve);
@@ -24,7 +24,7 @@ test('a API persiste o modelo de dados do dashboard e protege a migração inici
   assert.equal(initialResponse.status, 200);
   assert.equal(initialResponse.headers.get('X-MVida-Data-Source'), 'seed');
   const emptyState = await initialResponse.json();
-  assert.deepEqual(Object.keys(emptyState), ['patients', 'employees', 'users', 'appointments', 'payments', 'audit', 'reports']);
+  assert.deepEqual(Object.keys(emptyState), ['patients', 'employees', 'users', 'appointments', 'payments', 'audit', 'reports', 'services']);
 
   const demoState = {
     patients: [{ n: 'Maria da Silva Santos', p: 'PTC-001', t: '932 123 456', e: 'maria@email.ao', st: 'Activo' }],
@@ -33,7 +33,8 @@ test('a API persiste o modelo de dados do dashboard e protege a migração inici
     appointments: [{ d: '2025-04-28', h: '09:00', pac: 'Maria da Silva Santos', med: 'Dr. Carlos Silva', esp: 'Clínica Geral', st: 'Agendada', mo: '' }],
     payments: [{ id: 1, d: '2025-04-28', pac: 'Maria da Silva Santos', ds: 'Consulta', v: 30000, st: 'Pendente', m: '—', med: 'Dr. Carlos Silva' }],
     audit: [{ d: '2025-04-28', h: '14:32', u: 'admin', op: 'Início de sessão', ds: 'Utilizador entrou no sistema', nv: 'Informação', ip: '192.168.1.10' }],
-    reports: [{ ty: 'geral', t: 'Relatório Geral', d: 'Resumo geral', a: '2025-04-01', b: '2025-04-28', g: '2025-04-28 14:32', c: { k: [], h: [], r: [] } }]
+    reports: [{ ty: 'geral', t: 'Relatório Geral', d: 'Resumo geral', a: '2025-04-01', b: '2025-04-28', g: '2025-04-28 14:32', c: { k: [], h: [], r: [] } }],
+    services: []
   };
   const migrationResponse = await fetch(`${baseUrl}/api/state`, {
     method: 'POST',
@@ -89,10 +90,45 @@ test('a API persiste o modelo de dados do dashboard e protege a migração inici
   assert.equal(persistedState.employees.length, 1);
 });
 
+test('a API migra IDs ausentes ou inválidos sem criar colisões', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'mvida-legacy-ids-'));
+  const dataFile = path.join(directory, 'state.json');
+  await writeFile(dataFile, JSON.stringify({
+    patients: [],
+    employees: [],
+    users: [],
+    appointments: [{ id: 'consulta-legada-1' }, {}, { id: '' }],
+    payments: [{ id: 4 }, { id: 'inválido' }, { id: 4 }],
+    audit: [],
+    reports: []
+  }));
+  const server = createApiServer({
+    dataFile,
+    credentialsFile: path.join(directory, 'credentials.json'),
+    allowUnauthenticatedState: true
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  t.after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  const stateResponse = await fetch(`http://127.0.0.1:${server.address().port}/api/state`);
+  assert.equal(stateResponse.status, 200);
+  const state = await stateResponse.json();
+  assert.deepEqual(state.appointments.map((appointment) => appointment.id), [
+    'consulta-legada-1', 'consulta-legada-2', 'consulta-legada-3'
+  ]);
+  assert.deepEqual(state.payments.map((payment) => payment.id), [4, 5, 6]);
+});
+
 test('a API aceita a correcção de nomes corrompidos sem desproteger pacientes associados', async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'mvida-api-encoding-'));
   const dataFile = path.join(directory, 'state.json');
-  const server = createApiServer({ dataFile, credentialsFile: path.join(directory, 'credentials.json') });
+  const server = createApiServer({ dataFile, credentialsFile: path.join(directory, 'credentials.json'), allowUnauthenticatedState: true });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(0, '127.0.0.1', resolve);
@@ -110,6 +146,7 @@ test('a API aceita a correcção de nomes corrompidos sem desproteger pacientes 
     users: [],
     appointments: [{ pac: corruptedName, med: 'Dr. Carlos Silva' }],
     payments: [],
+    services: [],
     audit: [],
     reports: []
   };
@@ -193,9 +230,10 @@ test('a primeira utilização começa sem registos e permite criar o administrad
   });
 
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
-  const initial = await fetch(`${baseUrl}/api/state`);
-  const emptyState = await initial.json();
-  for (const [collection, records] of Object.entries(emptyState)) assert.deepEqual(records, [], collection);
+  const anonymousState = await fetch(`${baseUrl}/api/state`);
+  assert.equal(anonymousState.status, 401);
+  const setupStatus = await fetch(`${baseUrl}/api/setup/status`);
+  assert.deepEqual(await setupStatus.json(), { configured: false });
 
   const invalidSetup = await fetch(`${baseUrl}/api/setup`, {
     method: 'POST',
@@ -216,8 +254,9 @@ test('a primeira utilização começa sem registos e permite criar o administrad
   assert.equal(created.user.protectedAdministrator, true);
   assert.equal(typeof created.token, 'string');
   assert.equal(Object.hasOwn(created.user, 'password'), false);
+  const authHeaders = (token = created.token) => ({ Authorization: 'Bearer ' + token });
 
-  const savedResponse = await fetch(`${baseUrl}/api/state`);
+  const savedResponse = await fetch(`${baseUrl}/api/state`, { headers: authHeaders() });
   const savedState = await savedResponse.json();
   assert.deepEqual(savedState.patients, []);
   assert.deepEqual(savedState.employees, []);
@@ -231,14 +270,14 @@ test('a primeira utilização começa sem registos e permite criar o administrad
   };
   const tamperAdmin = await fetch(`${baseUrl}/api/state`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(tamperedAdminState)
   });
   assert.equal(tamperAdmin.status, 200);
 
   const deleteAdministrator = await fetch(`${baseUrl}/api/state`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ ...tamperedAdminState, users: [] })
   });
   assert.equal(deleteAdministrator.status, 409);
@@ -280,7 +319,7 @@ test('a primeira utilização começa sem registos e permite criar o administrad
 
   const addUser = await fetch(`${baseUrl}/api/state`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ ...savedState, users: [...savedState.users, {
       n: 'Funcionário', e: 'staff@example.org', pf: 'Recepção', st: 'Activa'
     }] })
@@ -320,10 +359,10 @@ test('a primeira utilização começa sem registos e permite criar o administrad
   assert.equal(temporarySession.mustChangePassword, true);
   assert.equal(temporarySession.user.pf, 'Médico');
 
-  const beforeSecondUser = await (await fetch(`${baseUrl}/api/state`)).json();
+  const beforeSecondUser = await (await fetch(`${baseUrl}/api/state`, { headers: authHeaders() })).json();
   const addSecondUser = await fetch(`${baseUrl}/api/state`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({
       ...beforeSecondUser,
       users: [...beforeSecondUser.users, {
@@ -332,11 +371,11 @@ test('a primeira utilização começa sem registos e permite criar o administrad
     })
   });
   assert.equal(addSecondUser.status, 200);
-  const forgedRoleState = await (await fetch(`${baseUrl}/api/state`)).json();
+  const forgedRoleState = await (await fetch(`${baseUrl}/api/state`, { headers: authHeaders() })).json();
   forgedRoleState.users.find((user) => user.e === 'staff@example.org').pf = 'Administrador';
   const forgedRole = await fetch(`${baseUrl}/api/state`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(forgedRoleState)
   });
   assert.equal(forgedRole.status, 200);

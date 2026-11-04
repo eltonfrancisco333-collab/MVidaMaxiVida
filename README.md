@@ -40,9 +40,24 @@ O ícone de lua/sol na barra superior, ao lado das notificações, alterna entre
 
 ## Consultas, tratamentos e pagamentos
 
-Cada médico tem um preço base de consulta, configurável no registo ou na edição do funcionário. Ao marcar uma consulta, o preço é preenchido com esse valor e pode ser ajustado para aquela marcação. O sistema cria automaticamente uma cobrança pendente ligada à consulta. Se a consulta for cancelada antes do pagamento, a cobrança pendente passa a anulada.
+Ao agendar uma consulta, o sistema cria uma cobrança integral pendente ligada à marcação. Cada médico tem um preço base, configurável no registo ou na edição do funcionário; o valor da consulta pode ser ajustado antes de confirmar a marcação.
 
-Tratamentos e outros serviços são registados separadamente na tela Pagamentos, com paciente, descrição e valor próprios. As cobranças de consultas e tratamentos aparecem em listas pendentes distintas; ao registar o pagamento, escolhe-se a forma de pagamento e é possível gerar o recibo. A data da consulta/tratamento é preservada e a data de pagamento fica registada separadamente. O histórico do paciente e os relatórios incluem valores e estados das cobranças.
+O cancelamento e a falta não têm taxa: uma cobrança ainda pendente é anulada, sem apagar a consulta nem a cobrança do histórico. A remarcação mantém a mesma consulta e cobrança, regista a data e hora anteriores e actualiza a data do serviço. Uma consulta já paga exige estorno integral antes de ser remarcada. Cancelar uma consulta já paga sinaliza que o estorno precisa de ser tratado; o estorno é registado com motivo.
+
+Pagamentos são integrais, sem saldos ou parcelas. Uma cobrança pendente pode ser paga ou anulada; um pagamento concluído não pode voltar a pendente. Um estorno integral muda o registo para anulado, exige motivo e preserva o histórico e o recibo.
+
+Tratamentos e serviços usam um catálogo de nomes e preços padrão, gerido pelo administrador na tela Pagamentos. O funcionário financeiro escolhe um serviço e pode ajustar o preço para aquela cobrança. Desactivar um serviço impede novas cobranças, mas mantém os registos anteriores. As listas de pendências, pagamentos concluídos, recibos, histórico do paciente e relatórios distinguem consulta e tratamento; a data do serviço é preservada separadamente da data do pagamento.
+
+## Perfis e permissões
+
+As permissões são verificadas na API e os dados enviados a cada perfil são limitados:
+
+- **Administrador:** gere todas as áreas e configura utilizadores, médicos, preços e catálogo.
+- **Recepção:** gere dados de contacto dos pacientes e agenda consultas; não recebe alergias, grupo sanguíneo, notas clínicas, pagamentos ou contas de utilizador. Não pode concluir consultas.
+- **Médico:** vê os dados clínicos dos pacientes associados às suas consultas e actualiza apenas o estado e a nota clínica das próprias consultas.
+- **Financeiro:** gere cobranças, pagamentos integrais, estornos e relatórios; recebe apenas os dados de paciente e consulta necessários para cobrança, sem notas clínicas.
+
+Uma palavra-passe temporária tem de ser alterada antes do acesso aos dados. A sessão expira ao fim de oito horas.
 
 ## Deploy
 
@@ -59,8 +74,9 @@ Configure `PORT` conforme a plataforma, `MVIDA_DATA_FILE` para o ficheiro de dad
 ## API e armazenamento
 
 - `GET /api/health` — estado do servidor.
-- `GET /api/state` — dados guardados do dashboard.
-- `POST /api/state` — inicialização do estado vazio, permitida apenas quando ainda não existem dados.
+- `GET /api/setup/status` — indica se o sistema já foi configurado.
+- `GET /api/state` — dados permitidos ao perfil da sessão autenticada.
+- `POST /api/state` — migração administrativa autenticada, apenas quando ainda não existem dados.
 - `PUT /api/state` — valida e guarda o estado completo.
 - `POST /api/setup` — criação do primeiro administrador, permitida apenas antes de existirem utilizadores.
 - `POST /api/auth/login` — validação do acesso dos utilizadores do sistema.
@@ -80,4 +96,4 @@ npm run build
 
 ## Limite de segurança
 
-As credenciais e as palavras-passe temporárias são guardadas como hashes scrypt separados dos dados clínicos; as operações de reposição e alteração exigem uma sessão autenticada. O dashboard fica oculto antes do login, mas a API que lê e grava os dados clínicos ainda não aplica autenticação nem controlo de acesso completos. Também faltam encriptação de dados, cópias de segurança automáticas e uma base de dados de produção. Não exponha este serviço na Internet nem o utilize com dados clínicos reais sem essas protecções.
+As credenciais e as palavras-passe temporárias são guardadas como hashes scrypt separados dos dados clínicos. A API exige sessão e aplica permissões por perfil às operações e aos dados devolvidos. Ainda faltam uma base de dados de produção, encriptação dos dados em repouso, cópias de segurança automáticas testadas, limitação de tentativas de login e uma revisão formal de privacidade. Até essas medidas serem concluídas, use o deploy público apenas para demonstração com dados fictícios.

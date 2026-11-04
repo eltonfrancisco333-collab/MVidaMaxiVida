@@ -64,6 +64,11 @@ export class FirstRunService {
     );
   }
 
+  async getSetupStatus() {
+    const { state } = await this.stateService.getState();
+    return { configured: state.users.length > 0 || await this.credentialRepository.hasCredentials() };
+  }
+
   createSession(user, mustChangePassword) {
     const token = randomBytes(32).toString('hex');
     this.sessions.set(token, { email: user.e.toLowerCase(), expiresAt: Date.now() + SESSION_TTL_MS });
@@ -89,6 +94,14 @@ export class FirstRunService {
       ...(role ? { pf: role } : {}),
       protectedAdministrator: await this.credentialRepository.isProtectedAdministrator(email)
     };
+  }
+
+  async assertPasswordChanged(token) {
+    const user = await this.getSession(token);
+    if (await this.credentialRepository.mustChangePassword(user.e.toLowerCase())) {
+      throw new ApiError(403, 'Altere a palavra-passe temporária antes de aceder ao sistema.');
+    }
+    return user;
   }
 
   async changePassword(token, input) {
@@ -140,7 +153,7 @@ export class FirstRunService {
     const email = typeof input?.email === 'string' ? input.email.trim().toLowerCase() : '';
     const profile = typeof input?.profile === 'string' ? input.profile : '';
     const status = typeof input?.status === 'string' ? input.status : '';
-    if (!['Administrador', 'Recepção', 'Médico'].includes(profile)) {
+    if (!['Administrador', 'Recepção', 'Médico', 'Financeiro'].includes(profile)) {
       throw new ApiError(400, 'Seleccione um perfil de acesso válido.');
     }
     if (!['Activa', 'Desactivada'].includes(status)) {

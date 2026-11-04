@@ -3,14 +3,17 @@ import { getHealth } from '../controllers/healthController.js';
 import { sendJson } from '../utils/http.js';
 import { createFirstRunController } from '../controllers/firstRunController.js';
 
-export function createRouter(stateService, firstRunService) {
-  const stateController = createStateController(stateService, firstRunService);
+export function createRouter(stateAccessService, firstRunService, options) {
+  const stateController = createStateController(stateAccessService, firstRunService, options);
   const firstRunController = createFirstRunController(firstRunService);
 
   return async (request, response) => {
     const requestUrl = new URL(request.url, 'http://localhost');
     if (requestUrl.pathname === '/api/health' && request.method === 'GET') {
       return getHealth(request, response);
+    }
+    if (requestUrl.pathname === '/api/setup/status' && request.method === 'GET') {
+      return firstRunController(request, response);
     }
     if (requestUrl.pathname === '/api/setup' && request.method === 'POST') {
       return firstRunController(request, response);

@@ -15,6 +15,31 @@ export class StateRepository {
   async load() {
     try {
       const saved = JSON.parse(await readFile(this.dataFile, 'utf8'));
+      if (saved && typeof saved === 'object' && !Array.isArray(saved) && !Array.isArray(saved.services)) {
+        saved.services = [];
+      }
+      if (saved && Array.isArray(saved.appointments)) {
+        const appointmentIds = new Set(saved.appointments.map((appointment) => appointment?.id).filter(Boolean));
+        let sequence = 0;
+        for (const appointment of saved.appointments) {
+          if (!appointment.id) {
+            do { sequence += 1; appointment.id = `consulta-legada-${sequence}`; } while (appointmentIds.has(appointment.id));
+            appointmentIds.add(appointment.id);
+          }
+        }
+      }
+      if (saved && Array.isArray(saved.payments)) {
+        const paymentIds = new Set();
+        let sequence = Math.max(0, ...saved.payments.map((payment) => Number(payment?.id) || 0));
+        for (const payment of saved.payments) {
+          const id = Number(payment.id);
+          if (!Number.isSafeInteger(id) || id <= 0 || paymentIds.has(id)) {
+            do { sequence += 1; } while (paymentIds.has(sequence));
+            payment.id = sequence;
+          }
+          paymentIds.add(Number(payment.id));
+        }
+      }
       validateState(saved);
       this.value = saved;
       this.persisted = true;

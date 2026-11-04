@@ -5,6 +5,7 @@ import { env } from './config/env.js';
 import { createRouter } from './routes/index.js';
 import { StateRepository } from './repositories/stateRepository.js';
 import { StateService } from './services/stateService.js';
+import { StateAccessService } from './services/stateAccessService.js';
 import { FirstRunService } from './services/firstRunService.js';
 import { CredentialRepository } from './repositories/credentialRepository.js';
 import { handleApiError } from './middlewares/errorHandler.js';
@@ -15,12 +16,14 @@ const backendDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url
 export function createApiServer({
   dataFile = env.dataFile,
   credentialsFile = env.credentialsFile,
-  staticDirectory = path.resolve(backendDirectory, '../dist')
+  staticDirectory = path.resolve(backendDirectory, '../dist'),
+  allowUnauthenticatedState = false
 } = {}) {
   const stateRepository = new StateRepository(dataFile);
   const stateService = new StateService(stateRepository);
+  const stateAccessService = new StateAccessService(stateService);
   const firstRunService = new FirstRunService(stateService, new CredentialRepository(credentialsFile));
-  const route = createRouter(stateService, firstRunService);
+  const route = createRouter(stateAccessService, firstRunService, { allowUnauthenticatedState });
 
   return createServer(async (request, response) => {
     try {
