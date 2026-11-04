@@ -1,0 +1,10 @@
+{
+  "routes": [
+    {"path":"/","title":"MVida Maxi Vida — Gestão Clínica"},
+    {"path":"/consultas","title":"Consultas — MVida"},
+    {"path":"/pacientes","title":"Pacientes — MVida"},
+    {"path":"/medicos","title":"Médicos — MVida"},
+    {"path":"/relatorios","title":"Relatórios — MVida"},
+    {"path":"/sobre","title":"Sobre — MVida"}
+  ]
+}

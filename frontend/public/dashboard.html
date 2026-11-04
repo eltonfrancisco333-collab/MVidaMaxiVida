@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MVida MAXI VIDA – Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--side:#0b4a2c;--side2:#0e5a36;--g:#0f8a4b;--gl:#e6f4ec;--bg:#f6f8fb;--card:#fff;--tx:#16233f;--mu:#6b7690;--bd:#e8ecf2;--bl:#2f7fd8;--blb:#e8f1fc;--or:#f59e0b;--orb:#fef3e0;--rd:#e5484d;--rdb:#fdeced;--pu:#8b5cf6;--sh:0 1px 3px rgba(20,30,50,.05),0 4px 14px rgba(20,30,50,.04);color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0}
+html{height:100%}body{min-height:100%}
+body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;display:flex}
+body.auth-pending #root aside,body.auth-pending #root main{visibility:hidden}
+.lucide{width:18px;height:18px;stroke-width:1.8;flex:none}
+aside{width:232px;background:linear-gradient(180deg,var(--side2),var(--side));color:#cfe6d8;display:flex;flex-direction:column;padding:clamp(12px,2.5vh,20px) 14px;overflow:hidden;transition:width .2s;flex:none;position:sticky;top:0;height:100vh;height:100dvh;align-self:flex-start}
+.logo{display:flex;align-items:center;gap:10px;padding:0 8px clamp(10px,2.5vh,22px);color:#fff}
+.logo b{font-size:21px;font-weight:700;line-height:1;display:block}.logo small{font-size:9px;letter-spacing:.14em;opacity:.8;font-weight:600}
+nav{display:flex;flex-direction:column;gap:2px;flex:1;min-height:0;overflow-y:auto}
+nav a,.sair{display:flex;align-items:center;gap:12px;padding:clamp(6px,1.3vh,10px) 12px;border-radius:10px;color:#cfe6d8;text-decoration:none;font-weight:500;cursor:pointer;white-space:nowrap}
+nav a:hover,.sair:hover{background:rgba(255,255,255,.08)}
+nav a.on{background:rgba(255,255,255,.14);color:#fff}
+.sair{margin-top:8px;border-top:1px solid rgba(255,255,255,.12);border-radius:0 0 10px 10px;padding-top:14px}
+body.col aside{width:72px}body.col .lbl,body.col .logo div{display:none}body.col aside .logo{justify-content:center;padding:0 0 22px}body.col nav a,body.col .sair{justify-content:center}
+main{flex:1;min-width:0;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:14px;padding:14px 28px;background:var(--card);border-bottom:1px solid var(--bd);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.hamb{background:none;border:0;color:var(--mu);cursor:pointer;display:grid;place-items:center;padding:6px;border-radius:8px}.hamb:hover{background:var(--bg)}
+.sbtn{background:var(--card);border:1px solid var(--bd);color:#2a3a5c;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;cursor:pointer;flex:none;box-shadow:var(--sh)}
+.busca{flex:1;max-width:520px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:11px 14px;font:inherit;color:var(--tx);outline:0;min-width:0;box-shadow:var(--sh)}
+.sp{flex:1}
+.bell{position:relative;background:var(--card);border:1px solid var(--bd);color:#2a3a5c;cursor:pointer;width:40px;height:40px;display:grid;place-items:center;border-radius:12px;box-shadow:var(--sh)}
+.bell b{position:absolute;top:7px;right:8px;width:9px;height:9px;border-radius:50%;background:#f5c518;border:2px solid var(--card)}
+.user{display:flex;align-items:center;gap:10px;cursor:pointer}.user b{display:block;font-size:13px}.user small{color:var(--mu);font-size:11.5px}
+.av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#1aa35c,#0b6a3b);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
+section.page{padding:24px 28px 32px;display:flex;flex-direction:column;gap:18px;max-width:1500px;width:100%}
+.hello{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.ph{width:64px;height:64px;border-radius:14px;background:linear-gradient(160deg,#e3eaf2,#c7d3e1);color:#5b6f8c;display:grid;place-items:end center;overflow:hidden;flex:none}.ph .lucide{width:54px;height:54px;stroke-width:1.4;margin-bottom:-6px}
+.hello h1{font-size:22px;font-weight:700}.hello p{color:var(--mu);margin-top:2px}.hello time{margin-left:auto;color:var(--mu);font-weight:500}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;box-shadow:var(--sh);padding:18px}
+.kpi{display:flex;gap:14px;align-items:center}
+.ic{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;flex:none}.ic svg{width:22px;height:22px}
+.kpi small{color:var(--mu);font-size:12px;font-weight:500}.kpi b{display:block;font-size:clamp(17px,1.5vw,24px);white-space:nowrap;font-weight:700;margin:2px 0;letter-spacing:-.01em}
+.d{font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:2px}.d.up{color:var(--g)}.d.dn{color:var(--rd)}.d svg{width:13px;height:13px;stroke-width:2.4}
+.k1 .ic{background:var(--blb);color:var(--bl)}.k2 .ic{background:var(--gl);color:var(--g)}.k3 .ic{background:var(--orb);color:var(--or)}.k4 .ic{background:var(--rdb);color:var(--rd)}.k1{background:linear-gradient(135deg,#eff5ff,#fff)}.k2{background:linear-gradient(135deg,#eefaf3,#fff)}.k3{background:linear-gradient(135deg,#fff3e3,#fffdf9)}.k4{background:linear-gradient(135deg,#ffeaea,#fffafa)}.k1 small,.k1 .d{color:var(--bl)}.k2 .d{color:var(--g)}.k3 small,.k3 .d{color:#d97706}.k4 .d{color:var(--rd)}
+.row{display:grid;gap:16px;grid-template-columns:1.55fr 1fr}
+.row.b{grid-template-columns:1.55fr 1fr}
+h2{font-size:15px;font-weight:600;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+h2 a{font-size:12.5px;font-weight:500;color:var(--bl);text-decoration:none}
+.chart{width:100%;height:190px;display:block}
+.chart text{fill:var(--mu);font:10.5px Inter,sans-serif}
+.don{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.ring{width:150px;height:150px;border-radius:50%;background:conic-gradient(#4fa8f0 0 33.6%,var(--card) 0 35%,#4c9a5a 0 58.6%,var(--card) 0 60%,#f5a31a 0 78.6%,var(--card) 0 80%,#8b7fd6 0 98.6%,var(--card) 0 100%);position:relative;flex:none}
+.ring:after{content:"";position:absolute;inset:32px;background:var(--card);border-radius:50%}
+.leg{display:flex;flex-direction:column;gap:11px;flex:1;min-width:150px}.leg div{display:flex;align-items:center;gap:8px;font-size:13px}.leg i{width:10px;height:10px;border-radius:3px}.leg b{margin-left:auto;font-weight:600}
+table{width:100%;border-collapse:collapse}
+th{font-size:11.5px;color:var(--mu);font-weight:500;text-align:left;padding:8px 6px;border-bottom:1px solid var(--bd)}
+td{padding:11px 6px;border-bottom:1px solid var(--bd);font-size:13px}tr:last-child td{border-bottom:0}
+.tag{padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600}.t-g{background:var(--gl);color:var(--g)}.t-o{background:var(--orb);color:#c27803}.t-b{background:var(--blb);color:var(--bl)}
+.wrap{overflow-x:auto}
+.act{display:flex;flex-direction:column}
+.act div{display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--bd)}.act div:last-child{border-bottom:0}
+.act .ic{width:36px;height:36px;border-radius:50%}.act .ic svg{width:17px;height:17px}.act b{display:block;font-size:13px;font-weight:600}.act small{color:var(--mu);font-size:12px}
+.off{display:none!important}
+.tit{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.tit h1{font-size:22px;font-weight:700;margin-right:auto}
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--g);color:#fff;border:0;border-radius:10px;padding:10px 16px;font:600 13.5px Inter,sans-serif;cursor:pointer}.btn:hover{filter:brightness(1.08)}.btn.o{background:var(--card);color:var(--tx);border:1px solid var(--bd);font-weight:500}
+.tabs{display:flex;gap:22px;border-bottom:1px solid var(--bd)}.tabs button{background:none;border:0;padding:8px 2px 12px;font:500 14px Inter,sans-serif;color:var(--mu);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}.tabs .on{color:var(--tx);border-color:var(--g);font-weight:600}
+.cg{display:grid;grid-template-columns:190px 1fr;gap:20px}
+.esp h3{font-size:13px;margin-bottom:10px}.esp label{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:13px;color:var(--mu)}.esp input{accent-color:var(--g)}
+.tb{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}.tb b{font-size:15px;margin:0 auto 0 8px;display:flex;align-items:center;gap:8px}
+.ib{width:34px;height:34px;border:1px solid var(--bd);background:var(--card);border-radius:9px;display:grid;place-items:center;color:var(--mu);cursor:pointer}
+.sg{border:1px solid var(--bd);background:var(--card);border-radius:9px;padding:8px 16px;font:500 13px Inter,sans-serif;cursor:pointer;color:var(--tx)}.sg.on{background:var(--g);color:#fff;border-color:var(--g)}
+.mes{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--bd);border-left:1px solid var(--bd);font-size:12px}
+.mes>*{border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:6px;min-height:86px}.mes>b{min-height:0;text-align:center;font-weight:500;color:var(--mu);padding:9px 0;background:var(--bg)}.mes span.m{color:var(--mu);opacity:.5}
+.ev{display:block;margin-top:4px;padding:3px 6px;border-radius:6px;font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev.b{background:#dbeafe;color:#1d4ed8}.ev.g{background:#dcf5e5;color:#157a40}.ev.o{background:#ffe8cc;color:#b45309}.ev.x{background:#e8ebf0;color:#4b5563}.t-x{background:#e8ebf0;color:#4b5563}
+.sbar{display:flex;gap:12px;flex-wrap:wrap}.sbar .busca{max-width:none}
+.av2{width:34px;height:34px;border-radius:50%;background:#dbe7f3;color:#35557a;display:grid;place-items:center;font-weight:700;font-size:12px}
+.acc{display:flex;gap:12px;color:var(--mu)}.acc .lucide{width:17px;height:17px;cursor:pointer}.acc .lucide:first-child{color:var(--bl)}.acc .lucide:last-child{color:var(--rd)}
+.pg{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-top:14px}.pg button{min-width:30px;height:30px;border:1px solid var(--bd);background:var(--card);border-radius:8px;cursor:pointer;color:var(--mu);font:500 12.5px Inter,sans-serif}.pg .on{background:var(--g);color:#fff;border-color:var(--g)}
+.kpis.t3{grid-template-columns:repeat(3,1fr)}
+.filt{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:13px}.filt label{display:flex;align-items:center;gap:8px;color:var(--mu)}
+.sel{border:1px solid var(--bd);background:var(--card);border-radius:10px;padding:9px 12px;font:13px Inter,sans-serif;color:var(--tx);cursor:pointer}
+.rc{width:17px;height:17px;color:var(--mu);cursor:pointer}
+.nm{display:none}.btn.r{background:var(--rd)}.t-r{background:var(--rdb);color:var(--rd)}.fl{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--mu)}.fl .busca{max-width:none}.fl.w{grid-column:1/-1}.btn.sm{padding:6px 10px;font-size:12px;white-space:nowrap}.acc.e2 .lucide:last-child{color:var(--mu)}.dim td{opacity:.55}.dim td:last-child{opacity:1}.sub{color:var(--mu);font-size:12.5px;margin:8px 0 0}
+.hg{display:flex;flex-direction:column;gap:6px}.dw{display:flex;align-items:center;gap:12px;padding:8px 12px;border:1px solid var(--bd);border-radius:12px}.dw b{width:84px;font-size:13px;font-weight:500}.dw .tm{margin-left:auto;display:flex;align-items:center;gap:8px}.dw .tm .busca{width:132px;max-width:none;padding:7px 10px}.dw.of{background:var(--bg)}.dw.of b,.dw.of .tm{opacity:.45}
+.sw{position:relative;width:36px;height:20px;flex:none}.sw input{opacity:0;position:absolute;inset:0;margin:0;cursor:pointer;z-index:1}.sw span{position:absolute;inset:0;background:#cfd6dd;border-radius:20px;transition:.15s}.sw span:before{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}.sw input:checked+span{background:var(--g)}.sw input:checked+span:before{transform:translateX(16px)}
+.dh{display:flex;align-items:center;gap:16px;padding-bottom:18px;border-bottom:1px solid var(--bd)}.dh b{font-size:17px}.av2.big{width:64px;height:64px;font-size:18px}.ds{padding:16px 0;border-bottom:1px solid var(--bd)}.ds:last-child{border:0}.ds h4{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin:0 0 12px;font-weight:600}.kv small{display:block;color:var(--mu);font-size:12px;margin-bottom:3px}.kv b{font-size:14px;font-weight:600}.chip{background:var(--gl);color:var(--g);padding:6px 12px;border-radius:20px;font-size:12.5px;font-weight:600}
+.info{background:var(--blb);color:#1d4ed8;border-radius:10px;padding:10px 12px;font-size:12.5px}.ts{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#14233b;color:#fff;padding:12px 20px;border-radius:12px;font-size:13.5px;z-index:40;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.ib3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}.bx{border:1px solid var(--bd);border-radius:12px;padding:12px}.bx small{display:block;color:var(--mu);font-size:12px;margin-bottom:3px}.bx b{font-size:13.5px}.tri{display:flex;gap:10px;width:100%}.tri .btn{flex:1;justify-content:center}
+.md.lg{width:min(760px,100%)}.sg2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}.sc{background:var(--bg);border:1px solid var(--bd);border-radius:14px;padding:16px}.sc.w{grid-column:1/-1}.sc h4{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin:0 0 14px;font-weight:600}.sc .kv,.sc .fl{margin-bottom:12px}.sc .kv:last-child,.sc .fl:last-child{margin-bottom:0}.sc .busca,.sc .sel{background:var(--card)}.busca:disabled{background:var(--bg);color:var(--mu)}
+.opc{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.opc label{border:1.5px solid var(--bd);border-radius:12px;padding:12px;cursor:pointer;background:var(--card);display:block}.opc label b{display:block;font-size:13.5px;margin-bottom:3px}.opc label small{color:var(--mu);font-size:12px;line-height:1.35}.opc input{display:none}.opc label:has(input:checked){border-color:var(--g);background:var(--gl)}
+@media(max-width:700px){.sg2,.opc{grid-template-columns:1fr}}
+.dp{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}.ph.big{width:132px;height:132px;border-radius:22px}.ph.big .lucide{width:104px;height:104px;margin-bottom:-10px;stroke-width:1.5}.dc{display:flex;flex-direction:column;gap:6px;font-size:14.5px;color:var(--mu);flex:1 1 150px;min-width:0}.dc .nm{font-size:19px;color:var(--tx);margin-bottom:2px}.dc span{color:var(--tx)}.dc a{color:var(--bl);cursor:pointer}.dc2{padding-top:2px}.dt{margin-top:22px;gap:16px;overflow-x:auto;scrollbar-width:none}.dt button{white-space:nowrap}.tp{padding-top:18px}
+@media(max-width:520px){.dw{flex-wrap:wrap}.dw .tm{margin-left:0;width:100%}.dw .tm .busca{flex:1;width:auto}.ib3{grid-template-columns:1fr}}
+@media(max-width:700px){.wrap table,.wrap thead,.wrap tbody,.wrap tr,.wrap td{display:block}.wrap thead,.wrap tr:has(>th){display:none}.wrap tr{border:1px solid var(--bd);border-radius:12px;padding:6px 12px;margin-bottom:10px}.wrap td{display:flex;justify-content:space-between;align-items:center;gap:12px;border:0;padding:7px 0;text-align:right}.wrap td:before{content:attr(data-l);color:var(--mu);font-size:12px;text-align:left}}.fl textarea.busca{resize:vertical}.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}.els{display:flex;gap:10px;flex-wrap:wrap;align-items:center}nav{scrollbar-width:none}nav::-webkit-scrollbar{display:none}*{scrollbar-width:thin}
+.np{position:fixed;right:28px;top:70px;width:min(340px,calc(100% - 24px));background:var(--card);border:1px solid var(--bd);border-radius:14px;box-shadow:0 12px 36px rgba(20,30,50,.16);z-index:15;padding:6px 14px 8px}.nh{display:flex;justify-content:space-between;align-items:center;padding:12px 0;font-size:14px}.nh a{font-size:12px;color:var(--bl);cursor:pointer}
+.ni{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--bd)}.ni>span:nth-child(2){flex:1}.ni b{display:block;font-size:13px}.ni small{color:var(--mu);font-size:12px}.ni .ic{width:36px;height:36px;border-radius:50%}.ni .ic .lucide{width:17px;height:17px}.ni>.lucide{color:var(--mu);width:16px}
+.ov{position:fixed;inset:0;background:rgba(15,25,45,.45);display:grid;place-items:center;z-index:20;padding:16px}.md{background:var(--card);border-radius:16px;width:min(560px,100%);max-height:90vh;overflow-y:auto;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.mb{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:16px}.mi{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--mu)}.mi b{color:var(--tx);font-size:15px}.mi a{color:var(--bl);cursor:pointer}.mi em{font-style:normal;color:var(--tx)}.mf{display:flex;justify-content:flex-end;margin-top:18px}
+@media(max-width:700px){.kpis.t3{grid-template-columns:repeat(3,1fr);gap:8px}.kpis.t3 .card{padding:10px}.kpis.t3 .ic{display:none}.kpis.t3 b{font-size:14px}.kpis.t3 small{font-size:11px}.kpis.t3 .d{font-size:11px}}
+@media(max-width:900px){.cg{grid-template-columns:1fr}.mes{font-size:10px}.mes>*{min-height:60px;padding:3px}}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.row,.row.b{grid-template-columns:1fr}}
+@media(max-width:820px){aside{position:fixed;left:0;top:0;z-index:30;width:250px;transform:translateX(-100%);transition:transform .2s}body.open aside{transform:none}body.open:after{content:"";position:fixed;inset:0;background:rgba(10,20,40,.45);z-index:25}header{padding:12px 16px}.user div+div,.user .lucide{display:none}section.page{padding:18px 16px 28px}.hello time{margin-left:0;width:100%}}
+@media(max-width:520px){.kpis{grid-template-columns:1fr}}
+
+.ia{background:none;border:0;padding:5px;cursor:pointer;color:var(--mu);display:grid;place-items:center;border-radius:8px}.ia:hover{background:var(--bg)}.ia .lucide{width:17px;height:17px;color:inherit!important}.ia[data-a=v]{color:var(--bl)}.ia[data-a=d]{color:var(--rd)}.ia[data-a=p]{color:var(--g)}
+.ev.r{background:#fde2e2;color:#b91c1c}.ev{cursor:pointer}.dl{display:flex;flex-direction:column;gap:10px}.dr{display:flex;gap:16px;align-items:center;padding:12px;border:1px solid var(--bd);border-radius:12px;flex-wrap:wrap}.dr>b{width:130px;font-size:13px}
+.rcb{border:1px dashed var(--bd);border-radius:14px;padding:18px}.rch{margin-bottom:16px}.rch b{display:block;font-size:17px}.rch small{color:var(--mu)}.rcn{color:var(--mu);font-size:12px;margin:16px 0 0}
+.hi{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px}.ht{font-size:28px;font-weight:700;color:var(--side);margin:0 0 4px}.hs{color:var(--mu)}.hdt{display:flex;align-items:center;gap:8px;color:var(--side2);font-weight:600;font-size:13px;margin-top:12px}.hdt .lucide{width:16px;height:16px}
+.ik4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.ikc{padding:18px}.ikt{display:flex;align-items:center;gap:14px}.ico{width:50px;height:50px;border-radius:12px;display:grid;place-items:center;flex:none}.ico .lucide{width:24px;height:24px}.ico.b{background:var(--blb);color:var(--bl)}.ico.g{background:var(--gl);color:var(--g)}.ico.o{background:var(--orb);color:#e2670a}.ico.v{background:#f1e8fb;color:#7e22ce}.ikt small{font-weight:600;font-size:13px;display:block}.ikt b{font-size:24px;font-weight:700;display:block;white-space:nowrap}.nb{color:var(--bl)}.ng{color:var(--g)}.no{color:#e2670a}.nv{color:#7e22ce}.cp{color:var(--mu);font-size:12.5px;margin:18px 0 0}
+.ipt{padding:0}.ph2{display:flex;justify-content:flex-start;align-items:center;gap:10px;font-size:16px;color:var(--side);padding:16px 20px;margin:0;border-bottom:1px solid var(--bd)}.ph2 .lucide{width:18px;height:18px}.ipt th{text-transform:uppercase;font-size:12px;letter-spacing:.03em;color:var(--mu);padding:14px 20px;font-weight:600}.ipt td{padding:14px 20px}.cpy{text-align:center;color:var(--mu);font-size:12.5px;margin:8px 0 0}
+.lgx{position:fixed;inset:0;z-index:60;background:var(--bg);display:grid;grid-template-columns:1.05fr 1fr}.lgx.off{display:none}#gm{z-index:70}.ts{z-index:80}
+.lgl{background:linear-gradient(135deg,rgba(11,74,44,.88),rgba(14,90,54,.52)),url('/clinic-login.jpg') center/cover no-repeat;color:#fff;padding:clamp(24px,5vw,56px);display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}.lgl:before{content:"";position:absolute;width:520px;height:520px;border-radius:50%;background:rgba(255,255,255,.06);right:-160px;bottom:-160px}.lgl:after{content:"";position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.05);left:-90px;top:30%}.lgl>*{position:relative;z-index:1}
+.lgl h1{font-size:clamp(24px,3vw,36px);line-height:1.18;margin:0 0 12px;max-width:560px;overflow-wrap:anywhere}.lgl p{opacity:.9;max-width:440px;line-height:1.55}.lgb{display:flex;align-items:center;gap:10px}.lgb b{font-size:22px;display:block;line-height:1}.lgb small{font-size:10px;letter-spacing:.14em;font-weight:600;opacity:.8}
+.lgr{display:grid;place-items:center;padding:clamp(14px,3vw,32px);overflow:auto;min-width:0}.lgc{width:min(420px,100%);background:var(--card);border:1px solid var(--bd);border-radius:18px;box-shadow:var(--sh);padding:clamp(20px,3vw,34px)}.lgc .lgb{justify-content:center;color:var(--side)}.lgc h2{font-size:22px;text-align:center;margin:18px 0 20px;display:block}
+.lin{display:flex;align-items:center;gap:10px;border:1px solid var(--bd);border-radius:12px;padding:0 12px;margin-bottom:14px;background:var(--bg)}.lin:focus-within{border-color:var(--g)}.lin input{flex:1;border:0;background:none;padding:13px 0;font:inherit;outline:0;color:var(--tx);min-width:0}.lin .lucide{width:18px;height:18px;color:var(--mu);flex:none}.lin button{background:none;border:0;cursor:pointer;display:grid;color:var(--mu);padding:4px}
+.lrow{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--mu);margin:2px 0 18px}.lrow label{display:flex;gap:8px;align-items:center;cursor:pointer}.lrow input{accent-color:var(--g)}.lbt{width:100%;justify-content:center;padding:13px}
+.lfg{display:block;margin:16px auto 0;background:none;border:0;color:var(--g);font-weight:600;font-size:13px;cursor:pointer}.ler{background:var(--rdb);color:#b91c1c;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:14px}.ldm{color:var(--mu);font-size:12px;text-align:center;margin:16px 0 0;line-height:1.5}.lcp{text-align:center;color:var(--mu);font-size:12px;margin:18px 0 0}
+@media(max-width:820px){.lgx{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(180px,30dvh) auto;overflow-y:auto}.lgl{display:flex;gap:18px;padding:20px 24px}.lgl h1{font-size:clamp(21px,5vw,28px);margin-bottom:6px}.lgl p{font-size:13px}.lgl>small{display:none}.lgr{align-items:start;padding:16px;overflow:visible}.lgc{margin:auto}}
+@media(max-width:420px){.lgx{grid-template-rows:minmax(150px,25dvh) auto}.lgl{padding:16px 18px}.lgc{padding:18px}.lgc h2{font-size:19px;margin:12px 0 16px}.lin{margin-bottom:10px}.lfg{margin-top:12px}.lcp{margin-top:12px}}
+.docw{overflow-x:auto}.doc{position:relative;background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;padding:32px 34px 160px;min-width:640px;font-size:12.5px;line-height:1.45;text-align:left}
+.dd{position:absolute;display:block;transform:rotate(45deg);border-radius:14px}.d1{right:-62px;top:128px;width:118px;height:118px;background:linear-gradient(135deg,#2f7bf0,#3b4fd8)}.d2{right:34px;top:222px;width:34px;height:34px;background:#12c98a;border-radius:8px}.d3{right:-70px;bottom:-34px;width:250px;height:250px;background:linear-gradient(135deg,#17b5c4,#2563eb);border-radius:28px}.d4{right:-34px;bottom:-24px;width:186px;height:186px;background:#3b4fd8;border-radius:22px}.d5{right:168px;bottom:64px;width:40px;height:40px;background:#12c98a;border-radius:8px}.d6{left:-14px;bottom:-14px;width:46px;height:46px;background:#12c98a;border-radius:8px}
+.dsl{position:absolute;right:30px;bottom:34px;color:#fff;font-weight:800;letter-spacing:.12em;font-size:14px;line-height:1.4;z-index:2}
+.dtop{display:flex;gap:38px;flex-wrap:wrap;position:relative;z-index:1}.dlogo{width:190px}.dlg{display:inline-grid;place-items:center;width:44px;height:44px;border:4px solid #12a8a0;border-radius:12px}.dlg i{width:16px;height:16px;background:linear-gradient(135deg,#2f7bf0,#3b4fd8);transform:rotate(45deg);border-radius:3px}.dlogo b{display:block;font-size:32px;color:#3b4fd8;line-height:1.05;margin-top:12px}.dlogo small{display:block;color:#3b4fd8;letter-spacing:.14em;font-size:12px}.dlogo u{display:block;height:3px;width:140px;margin-top:8px;background:linear-gradient(90deg,#12a8a0 50%,#3b4fd8 50%)}
+.dmain{flex:1;min-width:300px}.dmain h3{font-size:19px;letter-spacing:.02em;text-transform:uppercase;margin:6px 0 18px}.dinf{display:flex;gap:34px;flex-wrap:wrap}.dinf small,.dmeta small,.dtr small,.dbox small{color:#3b4fd8;text-transform:uppercase;letter-spacing:.1em;font-size:10.5px;font-weight:600;display:block;margin-bottom:6px}.dinf>div{max-width:190px}
+.dmeta{display:flex;gap:34px;align-items:center;margin:26px 0;position:relative;z-index:1;flex-wrap:wrap}.dmeta b{font-size:16px}.dar{color:#12a8a0;font-size:18px;letter-spacing:-5px}
+.dtb{width:calc(100% - 70px);border-collapse:collapse;border:1px solid #4f46c8;position:relative;z-index:1}.dtb th{color:#3b4fd8;text-transform:uppercase;letter-spacing:.12em;font-size:11px;text-align:left;padding:16px 18px;border-bottom:1px solid #4f46c8;background:#fff;position:static;box-shadow:none}.dtb td{padding:8px 18px;border:0;font-size:12.5px;vertical-align:top}.dtb tbody tr:first-child td{padding-top:16px}.dtb tbody tr:last-child td{padding-bottom:40px}.dtb .am{font-weight:700;font-size:14px;white-space:nowrap}
+.dtot{display:flex;justify-content:space-between;align-items:flex-start;margin-top:26px;position:relative;z-index:1;gap:16px;flex-wrap:wrap}.dtr{display:flex;gap:26px;margin-bottom:8px;align-items:baseline}.dtr small{width:130px;margin:0}.dtr b{font-size:15px}.dbox{background:#eef2ff;padding:14px 18px;border-radius:4px;margin-right:70px}.dbox small{display:inline;margin-right:8px;color:#0f172a;font-size:12px}.dbox b{font-size:20px}
+.dft{display:flex;gap:70px;margin-top:34px;position:relative;z-index:1;flex-wrap:wrap}.dft strong{display:block;color:#3b4fd8;font-size:15px}.dft span{color:#64748b;font-size:15px}.dsg{display:flex;gap:40px;align-items:center;margin-top:22px;position:relative;z-index:1}.dst{display:inline-grid;place-items:center;width:104px;height:104px;border-radius:50%;border:3px solid #3b4fd8;color:#3b4fd8;font-weight:800;letter-spacing:.1em;transform:rotate(-12deg);font-size:15px}.dli{border-top:1px solid #94a3b8;color:#64748b;padding-top:6px;min-width:170px;text-align:center;font-size:12px}
+.rx{gap:28px}.rx td{padding:18px 12px}.rx th{padding:14px 12px}
+@media(max-width:1100px){.ik4{grid-template-columns:repeat(2,1fr)}}@media(max-width:520px){.ik4{grid-template-columns:1fr}.ht{font-size:22px}}
+.md{display:flex;flex-direction:column;padding:0;max-width:100%;max-height:calc(100dvh - 32px);overflow:hidden}.md .mh{padding:18px 22px 12px;margin:0;flex:none}.md #gb{flex:1;min-height:0;overflow-y:auto;padding:4px 22px 18px}.md .mf{flex:none;margin:0;padding:12px 22px 16px;border-top:1px solid var(--bd)}.docw{overflow-x:auto}.doc{width:700px;min-width:0;padding-bottom:150px}
+@media(max-height:560px){.md .mh{padding:12px 18px 8px}.md #gb{padding:2px 18px 12px}.md .mf{padding:10px 18px 12px}.dh{padding-bottom:12px}}
+:root[data-theme="dark"]{--bg:#111827;--card:#1f2937;--tx:#e5e7eb;--mu:#aab4c4;--bd:#374151;--gl:#173c2c;--blb:#1e3550;--orb:#493719;--rdb:#4b252a;color-scheme:dark;--sh:0 1px 3px rgba(0,0,0,.2),0 4px 14px rgba(0,0,0,.14)}
+:root[data-theme="dark"] body{background:var(--bg);color:var(--tx)}
+:root[data-theme="dark"] .k1,:root[data-theme="dark"] .k2,:root[data-theme="dark"] .k3,:root[data-theme="dark"] .k4{background:var(--card)}
+:root[data-theme="dark"] .sbtn,:root[data-theme="dark"] .bell{color:var(--tx)}
+:root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea{color:var(--tx)}
+:root[data-theme="dark"] .lgx{background:rgba(0,0,0,.65)}
+.about-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.about-card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px}
+.about-card h2{justify-content:flex-start;gap:8px;margin-bottom:10px}
+.about-card p,.about-card li{color:var(--mu);line-height:1.6}
+.about-card ul{padding-left:20px}
+.theme-toggle{background:var(--card);border:1px solid var(--bd);color:var(--mu);width:40px;height:40px;border-radius:12px;display:grid;place-items:center;cursor:pointer;flex:none;box-shadow:var(--sh)}
+.theme-toggle:hover{color:var(--g);background:var(--bg)}
+.temporary-password{display:block;padding:12px;border:1px dashed var(--bd);border-radius:10px;background:var(--bg);font:600 16px ui-monospace,monospace;overflow-wrap:anywhere;user-select:all}
+</style>
+</head>
+<body>
+<aside>
+  <div class="logo">
+    <svg width="34" height="34" viewBox="0 0 34 34"><path d="M5 20C5 10 12 4 22 4c0 10-6 17-17 16z" fill="#7ee08a"/><path d="M12 30c0-10 6-17 17-17 0 10-6 17-17 17z" fill="#fff" fill-opacity=".92"/><path d="M12 30c0-10 6-17 17-17" fill="none" stroke="#16a34a" stroke-width="1.5"/></svg>
+    <div><b>MVida</b><small>MAXI VIDA</small></div>
+  </div>
+  <nav>
+    <a class="on"><i data-lucide="home"></i><span class="lbl">Início</span></a>
+    <a><i data-lucide="calendar-days"></i><span class="lbl">Consultas</span></a>
+    <a><i data-lucide="heart-pulse"></i><span class="lbl">Pacientes</span></a>
+    <a><i data-lucide="credit-card"></i><span class="lbl">Pagamentos</span></a>
+    <a><i data-lucide="file-text"></i><span class="lbl">Relatórios</span></a>
+    <a><i data-lucide="briefcase"></i><span class="lbl">Funcionários</span></a>
+    <a><i data-lucide="user-cog"></i><span class="lbl">Utilizadores</span></a>
+    <a><i data-lucide="shield-check"></i><span class="lbl">Auditoria</span></a>
+    <a><i data-lucide="info"></i><span class="lbl">Sobre</span></a>
+  </nav>
+  <a class="sair"><i data-lucide="log-out"></i><span class="lbl">Sair</span></a>
+</aside>
+
+<main>
+  <header>
+    <button class="hamb" id="hb" aria-label="Recolher menu"><i data-lucide="menu"></i></button>
+    <button class="sbtn" aria-label="Pesquisar"><i data-lucide="search"></i></button><input class="busca" placeholder="Pesquisar..." aria-label="Pesquisar">
+    <div class="sp"></div>
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Activar modo escuro" title="Activar modo escuro"><i data-lucide="moon"></i></button>
+    <button class="bell" aria-label="Notificações"><i data-lucide="bell"></i><b id="nd"></b></button>
+    <div class="user" title="Alterar palavra-passe" role="button" tabindex="0" aria-label="Alterar palavra-passe"><div class="av">MV</div><div><b>MVida</b><small>Sistema</small></div><i data-lucide="chevron-down"></i></div>
+  </header>
+
+
+<section class="page" id="v-inicio">
+  <div class="hi"><div><h1 class="ht">Bem-vindo(a)!</h1><p class="hs">Aqui está um resumo das principais informações da Clínica Maxi Vida.</p></div><div class="hdt"><i data-lucide="calendar-days"></i><span id="today-label"></span></div></div>
+  <div class="ik4" id="ik"></div>
+  <div class="card ipt"><h2 class="ph2"><i data-lucide="calendar-days"></i>Próximas Consultas</h2><div id="tin"></div></div>
+  <p class="cpy">© 2025 Clínica Maxi Vida – Sistema de Gestão Clínica</p>
+</section>
+<section class="page off" id="v-consultas">
+  <div class="tit"><h1>Gestão de Consultas</h1><button class="btn" id="bnc"><i data-lucide="plus"></i>Nova Consulta</button></div>
+  <div class="tabs" id="tbc"><button class="on" data-c="cal">Calendário</button><button data-c="lis">Lista</button><button data-c="age">Agendamentos</button></div>
+  <div class="card" id="pcal"><div class="cg"><div class="esp" id="esp"></div><div>
+    <div class="tb"><button class="ib" id="cp" aria-label="Anterior"><i data-lucide="chevron-left"></i></button><button class="ib" id="cn" aria-label="Seguinte"><i data-lucide="chevron-right"></i></button><b id="ct"></b><button class="sg" id="ch">Hoje</button><span id="cmodes" class="els" style="gap:8px"><button class="sg on" data-m="mes">Mês</button><button class="sg" data-m="sem">Semana</button><button class="sg" data-m="dia">Dia</button></span></div>
+    <div id="cbody"></div></div></div></div>
+  <div class="card off" id="tco1"></div><div class="card off" id="tco2"></div>
+</section>
+<section class="page off" id="v-pacientes">
+  <div class="tit"><h1>Gestão de Pacientes</h1></div>
+  <div class="sbar"><input class="busca" id="bpq" placeholder="Pesquisar por nome, nº de processo, telefone ou e-mail..." aria-label="Pesquisar paciente"><button class="btn o" id="bfp"><i data-lucide="filter"></i>Filtros</button><button class="btn" id="bnp"><i data-lucide="plus"></i>Novo Paciente</button></div>
+  <div class="card" id="tpa"></div>
+</section>
+<section class="page off" id="v-pagamentos">
+  <div class="tit"><h1>Gestão de Pagamentos</h1><button class="btn" id="bpg"><i data-lucide="plus"></i>Registar Pagamento</button></div>
+  <div class="tabs" id="tbp"><button class="on" data-p="rec">Recibos</button><button data-p="pag">Pagamentos</button><button data-p="pen">Pendentes</button><button data-p="his">Histórico</button></div>
+  <div class="kpis t3" id="kpg"></div>
+  <div class="card" id="tpg"></div>
+</section>
+<section class="page off rx" id="v-relatorios">
+  <div><h1 style="font-size:22px;font-weight:700;margin-bottom:4px">Relatórios</h1><p style="color:var(--mu)">Gere e exporte relatórios detalhados das operações da clínica.</p></div>
+  <div class="kpis t3" id="rk"></div>
+  <div class="sbar"><div class="busca" style="display:flex;align-items:center;gap:10px"><i data-lucide="bar-chart-3"></i><b id="rcount"></b></div><button class="btn" id="gr"><i data-lucide="plus-circle"></i>Gerar Relatório</button></div>
+  <div class="card" id="trl"></div>
+</section>
+<section class="page off" id="v-funcionarios">
+  <div class="tit"><h1>Gestão de Funcionários</h1></div>
+  <div class="sbar"><input class="busca" id="bfq" placeholder="Pesquisar por nome, função ou especialidade..." aria-label="Pesquisar funcionário"><select class="sel" id="ffn"><option>Todos</option><option>Médico</option><option>Enfermeiro</option><option>Técnico</option><option>Recepção</option><option>Administrador</option><option>Servente</option><option>Maqueiro</option></select><select class="sel" id="fst"><option>Em actividade</option><option>Activo</option><option>Afastado</option><option>Inactivo</option><option>Todos</option></select><button class="btn" id="bnf"><i data-lucide="plus"></i>Novo Funcionário</button></div>
+  <div class="card" id="tfu"></div>
+</section>
+<section class="page off" id="v-utilizadores">
+  <div class="tit"><h1>Gestão de Utilizadores</h1></div>
+  <div class="sbar"><input class="busca" id="buq" placeholder="Pesquisar utilizador..." aria-label="Pesquisar utilizador"><select class="sel" id="bus"><option>Todos</option><option>Activa</option><option>Desactivada</option></select><button class="btn" id="bnu"><i data-lucide="plus"></i>Novo Utilizador</button></div>
+  <div class="card" id="tus"></div>
+</section>
+<section class="page off" id="v-auditoria">
+  <div class="tit"><h1>Registo de Auditoria</h1></div>
+  <div class="filt"><label>Período:<select class="sel" id="afp"><option>Últimos 30 dias</option><option>Últimos 12 meses</option><option>Todos</option></select></label><label>Utilizador:<select class="sel" id="afu"></select></label><input class="busca" id="aq" placeholder="Pesquisar..." aria-label="Pesquisar" style="max-width:260px"></div>
+  <div class="card" id="tau"></div>
+</section>
+<section class="page off" id="v-sobre">
+  <div class="tit"><h1>Sobre a aplicação</h1></div>
+  <div class="about-grid">
+    <article class="about-card"><h2><i data-lucide="heart-pulse"></i>MVida MAXI VIDA</h2><p>Sistema de gestão clínica para organizar pacientes, consultas, pagamentos, equipa e relatórios.</p></article>
+    <article class="about-card"><h2><i data-lucide="layers-3"></i>Estrutura técnica</h2><ul><li>Frontend React com a interface de gestão preservada.</li><li>Backend Node.js com API HTTP.</li><li>Dados guardados em ficheiro JSON local ou num disco persistente configurado.</li></ul></article>
+    <article class="about-card"><h2><i data-lucide="key-round"></i>Contas e palavras-passe</h2><p>O administrador cria contas temporárias e repõe acessos. Cada utilizador altera a palavra-passe no primeiro acesso. As palavras-passe são guardadas como hashes.</p></article>
+    <article class="about-card"><h2><i data-lucide="shield-alert"></i>Nota de segurança</h2><p>A API de dados ainda não aplica autenticação e autorização completas. Antes de usar dados clínicos reais ou expor o sistema na Internet, é necessária uma revisão de segurança e controlo de acesso no servidor.</p></article>
+    <article class="about-card"><h2><i data-lucide="badge-info"></i>Versão</h2><p>MVida MAXI VIDA · Versão 1.0.0</p></article>
+  </div>
+</section>
+</main>
+
+<div class="np off" id="np"><div class="nh"><b>Notificações</b><a id="ml">Marcar todas como lidas</a></div></div>
+
+
+<div class="lgx" id="lgn"><div class="lgl"><div class="lgb"><svg width="34" height="34" viewBox="0 0 34 34"><path d="M5 20C5 10 12 4 22 4c0 10-6 17-17 16z" fill="#7ee08a"/><path d="M12 30c0-10 6-17 17-17 0 10-6 17-17 17z" fill="#fff"/><path d="M12 30c0-10 6-17 17-17" fill="none" stroke="#16a34a" stroke-width="1.5"/></svg><div><b>MVida</b><small>MAXI VIDA</small></div></div><div><h1>Cuidamos de si, sempre.</h1><p>Tecnologia, atenção e profissionais qualificados para o seu bem-estar.</p></div><small style="opacity:.7">Sistema de Gestão Clínica</small></div>
+<div class="lgr"><form class="lgc" id="lf" novalidate><div class="lgb"><svg width="34" height="34" viewBox="0 0 34 34"><path d="M5 20C5 10 12 4 22 4c0 10-6 17-17 16z" fill="#22a45d"/><path d="M12 30c0-10 6-17 17-17 0 10-6 17-17 17z" fill="#0b4a2c"/><path d="M12 30c0-10 6-17 17-17" fill="none" stroke="#16a34a" stroke-width="1.5"/></svg><div><b>MVida</b><small>MAXI VIDA</small></div></div><h2>Entrar no Sistema</h2><div class="ler" id="ler" style="display:none" role="alert"></div>
+<label class="lin"><i data-lucide="user"></i><input id="li" placeholder="E-mail ou Utilizador" aria-label="E-mail ou Utilizador" autocomplete="username"></label>
+<label class="lin"><i data-lucide="lock"></i><input id="lp" type="password" placeholder="Palavra-passe" aria-label="Palavra-passe" autocomplete="current-password"><button type="button" id="lse" aria-label="Mostrar palavra-passe"><i data-lucide="eye"></i></button></label>
+<div class="lrow"><label><input type="checkbox">Lembrar-me</label></div><button class="btn lbt" type="submit">Entrar</button><button type="button" class="lfg" id="lfg">Esqueceu a palavra-passe?</button>
+<p class="ldm">Aceda com o e-mail e a palavra-passe da sua conta.</p><p class="lcp">MVida MAXI VIDA © 2025</p></form></div></div>
+<div class="ov off" id="gm"><div class="md"><div class="mh"><h2 id="gt" style="margin:0"></h2><button class="ib" id="gx" aria-label="Fechar"><i data-lucide="x"></i></button></div><div id="gb"></div><div class="mf" id="gf" style="gap:10px"></div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+try{if(localStorage.getItem('mvida-theme')==='dark')document.documentElement.dataset.theme='dark'}catch(error){console.warn('Não foi possível carregar a preferência de tema.',error)}
+const $=i=>document.getElementById(i),Q=(s,r)=>[...(r||document).querySelectorAll(s)];
+const TODAY=(()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)})(),MN=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],DW=['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'],DC=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+document.getElementById('today-label').textContent=new Intl.DateTimeFormat('pt-PT',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date());
+const ic=()=>window.lucide&&lucide.createIcons();
+const ini=n=>{const w=n.replace(/^(Dr\.|Dra\.)\s*/,'').split(' ');return (w[0][0]+(w.length>1?w[w.length-1][0]:'')).toUpperCase()};
+const br=d=>d?d.split('-').reverse().join('/'):'—',mt=v=>v.toLocaleString('de-DE')+' MT';
+const toast=m=>{const d=document.createElement('div');d.className='ts';d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),2400)};
+const iso=d=>d.toISOString().slice(0,10),add=(d,n)=>{const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return iso(x)},wd=d=>(new Date(d+'T00:00:00Z').getUTCDay()+6)%7;
+const TC={Activo:'t-g',Activa:'t-g',Pago:'t-g','Concluída':'t-g',Agendada:'t-b','Em curso':'t-o',Pendente:'t-o',Afastado:'t-o',Faltou:'t-r',Sucesso:'t-g','Informação':'t-b',Aviso:'t-o'};
+const tag=s=>`<span class="tag ${TC[s]||'t-x'}">${s}</span>`;
+const hhmm=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const H=(a,b,ds)=>ds.map(d=>[d,a,b]);
+/* ---------- dados iniciais vazios ---------- */
+let PA=[];
+let FU=[];
+let US=[];
+const C=(d,h,pac,med,esp,st)=>({d,h,pac,med,esp,st,mo:''});
+let CO=[];
+const P=(d,pac,ds,v,st,m)=>({d,pac,ds,v,st,m});
+let PG=[];
+let AU=[];
+let USER=null,MUST_CHANGE_PASSWORD=false;const ADM=()=>USER?.pf==='Administrador';
+const lg=(op,ds,nv)=>{AU.unshift({d:TODAY,h:hhmm(),u:USER.n,op,ds,nv:nv||'Sucesso',ip:'192.168.1.10'});window.dispatchEvent(new Event('mvida:data-change'))};
+/* ---------- janela modal e componentes ---------- */
+let OK=null,PDF=null;
+const CB='<button class="btn o gc">Cancelar</button>';
+const M=(t,b,f,w)=>{$('gt').textContent=t;$('gb').innerHTML=b;$('gf').innerHTML=f||'<button class="btn gc">Fechar</button>';Q('#gm .md')[0].classList.toggle('lg',!!w);$('gm').classList.remove('off');ic();fit()};
+const X=()=>$('gm').classList.add('off');
+const askConfirm=(title,message,label,onConfirm)=>{const layer=document.createElement('div');layer.className='ov';layer.style.zIndex='90';layer.setAttribute('role','presentation');const modal=document.createElement('div');modal.className='md';modal.setAttribute('role','alertdialog');modal.setAttribute('aria-modal','true');const head=document.createElement('div');head.className='mh';const heading=document.createElement('h2');heading.textContent=title;head.appendChild(heading);const body=document.createElement('div');body.id='confirm-message';body.style.cssText='padding:4px 22px 18px;color:var(--mu);line-height:1.55';body.textContent=message;const footer=document.createElement('div');footer.className='mf';footer.style.cssText='display:flex;justify-content:flex-end;gap:10px';const cancel=document.createElement('button');cancel.type='button';cancel.className='btn o';cancel.textContent='Voltar';const confirm=document.createElement('button');confirm.type='button';confirm.className='btn';confirm.textContent=label;footer.append(cancel,confirm);modal.append(head,body,footer);layer.appendChild(modal);document.body.appendChild(layer);cancel.onclick=()=>layer.remove();confirm.onclick=()=>{layer.remove();onConfirm()};layer.onclick=e=>{if(e.target===layer)layer.remove()};confirm.focus()};
+function fit(){const d=Q('#gb .doc')[0];if(!d)return;d.style.zoom=1;const g=$('gb'),pd=parseFloat(getComputedStyle(g).paddingLeft)*2;d.style.zoom=Math.min(1,(g.clientWidth-pd)/702);}
+addEventListener('resize',fit);
+const kv=(l,v)=>`<div class="kv"><small>${l}</small><b>${v||'—'}</b></div>`;
+const sc=(h,b,w)=>`<div class="sc${w?' w':''}"><h4>${h}</h4>${b}</div>`;
+const fi=(l,v,t,id)=>`<label class="fl">${l}<input class="busca"${id?` id="${id}"`:''} type="${t||'text'}" value="${v==null?'':v}"></label>`;
+const sl=(l,o,v,id)=>`<label class="fl">${l}<select class="sel"${id?` id="${id}"`:''}>${o.map(r=>`<option value="${r}"${r===v?' selected':''}>${r||'Seleccionar'}</option>`).join('')}</select></label>`;
+const hd=(n,tags)=>`<div class="dh"><div class="av2 big">${ini(n)}</div><div><b>${n}</b><div class="els" style="gap:6px;margin-top:6px">${tags}</div></div></div>`;
+const kvg=a=>`<div class="tp fg">${a.map(r=>kv(r[0],r[1])).join('')}</div>`;
+const nobs=()=>'<div class="tp" style="color:var(--mu)">Sem observações.</div>';
+function dm(t,av,nome,A,B,tabs,foot){const ln=a=>a.map(r=>`<div>${r[0]}: ${r[2]?`<a>${r[1]}</a>`:`<span>${r[1]||'—'}</span>`}</div>`).join('');
+M(t,`<div class="dp"><div class="ph big"><i data-lucide="${av}"></i></div><div class="dc"><b class="nm">${nome}</b>${ln(A)}</div><div class="dc dc2">${ln(B)}</div></div><div class="tabs dt">${tabs.map((x,i)=>`<button${i?'':' class="on"'}>${x[0]}</button>`).join('')}</div><div id="tpn">${tabs[0][1]}</div>`,foot);
+Q('.dt button').forEach((b,i)=>b.onclick=()=>{Q('.dt button').forEach(x=>x.classList.toggle('on',x===b));$('tpn').innerHTML=tabs[i][1]})}
+const conf=(txt,fn)=>{OK=()=>{fn();toast('Registo eliminado')};M('Eliminar registo?',`<p style="color:var(--mu);margin:0">${txt}</p><p style="color:var(--mu);margin:10px 0 0;font-size:13px">Esta acção não pode ser anulada.</p>`,CB+'<button class="btn r" id="ok">Eliminar</button>')};
+const form=(t,body,fn,lab,w)=>{OK=fn;M(t,body,CB+`<button class="btn" id="ok" data-confirm-edit="true">${lab||'Guardar'}</button>`,w)};
+const V=id=>$(id).value.trim();
+/* ---------- tabela com paginação ---------- */
+const PG0={},RR={},AC={v:['eye','Ver detalhes'],e:['pencil','Editar'],d:['trash-2','Eliminar'],r:['receipt','Gerar recibo'],p:['wallet','Registar pagamento'],x:['download','Baixar PDF'],h:['history','Ver histórico']};
+const acts=a=>`<div class="acc">${a.map(k=>`<button class="ia" data-a="${k}" title="${AC[k][1]}"><i data-lucide="${AC[k][0]}"></i></button>`).join('')}</div>`;
+function tbl(id,heads,rows,N){N=N||6;let p=PG0[id]||0;const t=Math.max(1,Math.ceil(rows.length/N));if(p>=t)p=t-1;PG0[id]=p;
+let h=`<div class="wrap"><table><thead><tr>${heads.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.slice(p*N,p*N+N).map(r=>`<tr data-t="${id}" data-i="${r.i}">${r.c.map(c=>`<td>${c}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${heads.length}" style="text-align:center;color:var(--mu);padding:28px">Sem resultados.</td></tr>`}</tbody></table></div>`;
+if(t>1){h+='<div class="pg">';for(let k=0;k<t;k++)h+=`<button class="pgb${k===p?' on':''}" data-t="${id}" data-p="${k}">${k+1}</button>`;h+='</div>'}
+$(id).innerHTML=h;ic();lab()}
+function lab(){Q('.wrap table').forEach(t=>{const h=Q('th',t).map(x=>x.textContent);Q('td',t).forEach((d,i)=>d.dataset.l=h[i%h.length]||'')})}
+const norm=s=>s.toLowerCase();
+/* ---------- INÍCIO ---------- */
+function rin(){const ac=PA.filter(x=>x.st==='Activo').length,md=FU.filter(x=>x.f==='Médico'&&x.st==='Activo').length,co=CO.filter(x=>x.d>=TODAY&&(x.st==='Agendada'||x.st==='Em curso')&&ownAppointment(x)).length,rc=PG.filter(x=>x.st==='Pago').reduce((a,x)=>a+x.v,0);
+const k=isDoctor()?[['Minhas consultas',CO.filter(ownAppointment).length,'Consultas da sua agenda','calendar-days','o'],['Agendadas',co,'Marcadas e por realizar','calendar-days','b']]:[['Pacientes',ac,'Pacientes activos','users','b'],['Médicos',md,'Em actividade','stethoscope','g'],['Consultas',co,'Marcadas e por realizar','calendar-days','o'],['Receita',mt(rc),'Total arrecadado','wallet','v']];
+$('ik').innerHTML=k.map(x=>`<div class="card ikc"><div class="ikt"><span class="ico ${x[4]}"><i data-lucide="${x[3]}"></i></span><div><small>${x[0]}</small><b class="n${x[4]}">${x[1]}</b></div></div><p class="cp">${x[2]}</p></div>`).join('');
+const r=[];CO.forEach((x,i)=>{if(ownAppointment(x)&&x.d>=TODAY&&(x.st==='Agendada'||x.st==='Em curso'))r.push({i,k:x.d+x.h,c:[br(x.d),x.h,x.pac,x.esp,x.med,tag(x.st)]})});r.sort((a,b)=>a.k<b.k?-1:1);
+tbl('tin',['Data','Hora','Paciente','Especialidade','Médico','Estado'],r,6)}
+RR.tin=rin;
+/* ---------- PACIENTES ---------- */
+const FP={q:'',st:'',tb:''};
+function rpa(){const q=norm(FP.q),r=[];PA.forEach((x,i)=>{if(FP.st&&x.st!==FP.st||FP.tb&&x.tb!==FP.tb)return;if(q&&norm([x.n,x.p,x.t,x.e,x.bi].join(' ')).indexOf(q)<0)return;r.push({i,c:[`<div class="av2">${ini(x.n)}</div>`,x.n,x.p,x.t,x.e,tag(x.st),acts(['v','h','e','d'])]})});
+tbl('tpa',['Foto','Nome Completo','Nº Processo','Telefone','E-mail','Estado','Ações'],r);const n=(FP.st?1:0)+(FP.tb?1:0);$('bfp').lastChild.textContent='Filtros'+(n?` (${n})`:'')}
+RR.tpa=rpa;
+const vpa=i=>{const x=PA[i];setTimeout(()=>{const a=Q('#gb .dc a')[0];if(a)a.onclick=()=>hpa(i)},0);dm('Detalhes do Paciente','user-round',x.n,[['Nº Processo',x.p],['Telefone',x.t],['E-mail',x.e]],[['Alergias',x.al],['Tipo Sanguíneo',x.tb],['Histórico','Ver histórico',1]],[['Dados Pessoais',kvg([['BI',x.bi],['Data de nascimento',br(x.nc)],['Telefone alternativo',x.ta],['Canal preferido',x.ca]])],['Consultas',`<div class="tp">${CO.filter(c=>c.pac===x.n).map(c=>`<div style="color:var(--mu);margin-bottom:6px">${br(c.d)} · ${c.med} · ${c.st}</div>`).join('')||'<span style="color:var(--mu)">Sem consultas.</span>'}</div>`],['Pagamentos',`<div class="tp">${PG.filter(c=>c.pac===x.n).map(c=>`<div style="color:var(--mu);margin-bottom:6px">${br(c.d)} · ${mt(c.v)} · ${c.st}</div>`).join('')||'<span style="color:var(--mu)">Sem pagamentos.</span>'}</div>`],['Observações',nobs()]])};
+const fpa=(x,t)=>`<div class="sg2">${sc('Contacto',fi('Nome completo',x.n,'text','f_n')+fi('E-mail',x.e,'email','f_e')+fi('Telefone',x.t,'tel','f_t')+fi('Telefone alternativo (opcional)',x.ta,'tel','f_ta'))}${sc('Identificação',fi('BI (opcional)',x.bi,'text','f_bi')+fi('Data de nascimento',x.nc,'date','f_nc')+sl('Canal preferido',['SMS','Email'],x.ca,'f_ca')+(t?sl('Estado',['Activo','Inactivo'],x.st,'f_st'):''))}${sc('Clínico',fi('Alergias',x.al==='Não registadas'?'':x.al,'text','f_al')+sl('Tipo sanguíneo',['','A+','A-','B+','B-','AB+','AB-','O+','O-'],x.tb,'f_tb'),1)}</div>`;
+const rdpa=x=>({n:V('f_n'),e:V('f_e'),t:V('f_t'),ta:V('f_ta'),bi:V('f_bi'),nc:$('f_nc').value,ca:$('f_ca').value,al:V('f_al')||'Não registadas',tb:$('f_tb').value,st:$('f_st')?$('f_st').value:x.st});
+const okpa=d=>{if(!d.n){toast('Indique o nome do paciente.');return false}if(!/^\S+@\S+\.\S+$/.test(d.e)){toast('Indique um e-mail válido.');return false}if(!d.t){toast('Indique o telefone.');return false}if(d.bi&&!/^[A-Za-z0-9]{5,20}$/.test(d.bi)){toast('BI inválido (5 a 20 letras ou números).');return false}return true};
+const epa=i=>{const x=PA[i];form('Editar paciente',hd(x.n,`<span class="tag t-x">${x.p}</span>`)+fpa(x,1),()=>{const d=rdpa(x);if(!okpa(d))return false;Object.assign(x,d);lg('Actualização de paciente',`Dados de ${x.n} actualizados`);rpa();toast('Guardado com sucesso')},'Guardar',1)};
+const npa=()=>{const x={n:'',e:'',t:'',ta:'',bi:'',nc:'',ca:'SMS',al:'',tb:'',st:'Activo'};form('Novo paciente',fpa(x,0),()=>{const d=rdpa(x);if(!okpa(d))return false;const n=Math.max(...PA.map(z=>+z.p.slice(4)))+1;PA.push({...d,p:'PTC-'+String(n).padStart(3,'0')});lg('Registo de paciente',`Paciente ${d.n} registado`);rpa();toast('Paciente registado')},'Guardar',1)};
+const dpa=i=>{const x=PA[i];if(isDoctor()){toast('O perfil Médico não pode eliminar pacientes.');return}if(CO.some(c=>c.pac===x.n)){toast('Não é possível eliminar este paciente porque está associado a uma consulta.');return}conf(`Eliminar o paciente ${x.n}?`,()=>{lg('Eliminação de paciente',`Paciente ${x.n} eliminado`,'Aviso');PA.splice(i,1);rpa()})};
+/* ---------- FUNCIONÁRIOS ---------- */
+const FX={q:'',f:'Todos',e:'Em actividade'},FNS=['Médico','Enfermeiro','Técnico','Recepção','Administrador','Servente','Maqueiro'],ESPS=['Clínica Geral','Cardiologia','Pediatria','Ginecologia','Dermatologia','Ortopedia'];
+function rfu(){const q=norm(FX.q),r=[];FU.forEach((x,i)=>{if(FX.f!=='Todos'&&x.f!==FX.f)return;if(FX.e==='Em actividade'?x.st==='Inactivo':FX.e!=='Todos'&&x.st!==FX.e)return;if(q&&norm([x.n,x.f,x.s].join(' ')).indexOf(q)<0)return;r.push({i,c:[`<div class="av2">${ini(x.n)}</div>`,x.n,x.f,x.s,x.a?`<span class="tag t-b">${x.a}</span>`:'<span class="tag t-x">Sem conta</span>',tag(x.st),acts(['v','h','e','d'])]})});
+tbl('tfu',['Foto','Nome Completo','Função','Sector / Especialidade','Acesso ao sistema','Estado','Ações'],r);$('bnf').style.display=ADM()?'':'none'}
+RR.tfu=rfu;
+const DIAS7=()=>DW;
+const gh=h=>{const m={};h.forEach(z=>m[DW.indexOf(z[0])]=z);const o=[];let i=0;while(i<7){if(!m[i]){i++;continue}let j=i;while(m[j+1]&&m[j+1][1]===m[i][1]&&m[j+1][2]===m[i][2])j++;o.push((j>i?DC[i]+'–'+DC[j]:DC[i])+' · '+m[i][1]+'–'+m[i][2]);i=j+1}return o};
+const hg=h=>{const m={};(h||[]).forEach(z=>m[z[0]]=z);return `<div class="hg">${DW.map(d=>{const z=m[d],on=!!z;return `<div class="dw${on?'':' of'}"><label class="sw"><input type="checkbox"${on?' checked':''}><span></span></label><b>${d}</b><span class="tm"><input class="busca" type="time" value="${z?z[1]:'08:00'}"${on?'':' disabled'}><i>–</i><input class="busca" type="time" value="${z?z[2]:'16:00'}"${on?'':' disabled'}></span></div>`}).join('')}</div>`};
+const rdh=()=>Q('#gm .dw').filter(d=>Q('input',d)[0].checked).map(d=>[Q('b',d)[0].textContent,...Q('.tm input',d).map(i=>i.value)]);
+const vfu=i=>{const x=FU[i],med=x.f==='Médico',es=med?'Especialidade':'Sector';dm('Detalhes do Funcionário','user-round',x.n,[['Função',x.f],[es,x.s],['Telefone',x.t]],[['E-mail',x.e],['Estado',x.st],['Acesso',x.st==='Inactivo'?'Bloqueado':x.a||'Sem acesso']],[['Dados Pessoais',kvg([['Telefone',x.t],['Telefone alternativo',x.ta],['E-mail',x.e],['BI',x.bi]])],['Profissional',kvg([['Função',x.f],[es,x.s]].concat(x.p?[['Preço da consulta',mt(x.p)]]:[]).concat(x.sd?[['Data de saída',br(x.sd)],['Motivo',x.sm]]:[]))],['Horário',`<div class="tp els">${x.h&&x.h.length?gh(x.h).map(c=>`<span class="chip">${c}</span>`).join(''):'<span style="color:var(--mu)">Sem horário de atendimento.</span>'}</div>`],['Observações',nobs()]])};
+const OP=[['Activo','Trabalha na instituição e aparece nas marcações.'],['Afastado','Ausência temporária (férias ou licença). Não recebe novas marcações.'],['Inactivo','Deixou a instituição. A conta fica bloqueada e o histórico é mantido.']];
+const opc=st=>`<input type="hidden" id="f_st" value="${st}"><div class="opc">${OP.map(q=>`<label><input type="radio" name="es" value="${q[0]}"${q[0]===st?' checked':''}><b>${q[0]}</b><small>${q[1]}</small></label>`).join('')}</div>`;
+const wireOp=()=>Q('input[name=es]').forEach(r=>r.onchange=()=>{$('f_st').value=r.value;$('ed').style.display=r.value==='Inactivo'?'':'none'});
+const efu=i=>{const x=FU[i],med=x.f==='Médico';form('Editar funcionário',hd(x.n,`<span class="tag t-b">${x.f}</span>`)+`<div class="sg2">${sc('Contacto',fi('Telefone',x.t,'tel','f_t')+fi('Telefone alternativo',x.ta,'tel','f_ta')+fi('E-mail',x.e,'email','f_e'))}${sc('Profissional',`<label class="fl">Função<input class="busca" value="${x.f}" disabled></label>`+(med?sl('Especialidade',ESPS,x.s,'f_s'):fi('Sector',x.s,'text','f_s')))}${sc('Estado',opc(x.st),1)}<div class="sc w" id="ed" style="display:${x.st==='Inactivo'?'':'none'}"><h4>Saída da instituição</h4><div class="sg2" style="margin-top:0">${fi('Data de saída',x.sd||'','date','f_sd')}${fi('Motivo',x.sm||'','text','f_sm')}</div>${med?'<div class="info" style="margin-top:12px">Consultas futuras deste médico terão de ser reatribuídas.</div>':''}</div>${med?sc('Horário de atendimento',hg(x.h),1):''}</div>`,()=>{const st=$('f_st').value;if(st==='Inactivo'&&!$('f_sd').value){toast('Indique a data de saída.');return false}
+if(st==='Inactivo'&&med&&CO.some(c=>c.med===x.n&&c.d>=TODAY&&c.st==='Agendada')){toast('Há consultas futuras agendadas. Reatribua ou cancele-as primeiro.');return false}
+Object.assign(x,{t:V('f_t'),ta:V('f_ta'),e:V('f_e'),s:$('f_s').value.trim(),st});if(med)x.h=rdh();if(st==='Inactivo'){x.sd=$('f_sd').value;x.sm=V('f_sm')}else{delete x.sd;delete x.sm}
+lg('Actualização de funcionário',`${x.n} · estado ${st}`);rfu();toast('Guardado com sucesso')},'Guardar',1);wireOp()};
+const AF={'Médico':'Médico','Recepção':'Recepção','Administrador':'Administrador'};
+const nfu=()=>{form('Novo funcionário',`<div class="fg">${fi('Nome completo','','text','f_n')}${sl('Função',['',...FNS],'','f_f')}${fi('E-mail','','email','f_e')}${fi('Telefone','','tel','f_t')}${fi('BI (opcional)','','text','f_bi')}<label class="fl" id="fo">Sector / Departamento<input class="busca" id="f_s"></label><div class="fl" id="fm" style="display:none">Especialidade<select class="sel" id="f_es">${ESPS.map(e=>`<option>${e}</option>`).join('')}</select></div><div id="fh" style="display:none;grid-column:1/-1"><div class="fl" style="margin-bottom:8px">Horário de atendimento</div>${hg(H('08:00','16:00',DW.slice(0,5)))}</div><div id="fi" class="info" style="grid-column:1/-1">Seleccione a função para ver o acesso ao sistema.</div></div>`,async()=>{const f=$('f_f').value,n=V('f_n'),email=V('f_e');if(!n||!f){toast('Indique o nome e a função.');return false}if(f in AF&&!/^\S+@\S+\.\S+$/.test(email)){toast('Indique um e-mail válido (necessário para a conta de acesso).');return false}if(f in AF&&US.some(user=>user.e.toLowerCase()===email.toLowerCase())){toast('Já existe um utilizador com este e-mail.');return false}
+const med=f==='Médico',x={n,f,s:med?$('f_es').value:V('f_s'),a:AF[f]||'',t:V('f_t'),ta:'',e:email,bi:V('f_bi'),st:'Activo'};if(med){x.h=rdh();x.p=30000}FU.push(x);const account=x.a?{n,e:x.e,pf:x.a,st:'Activa'}:null;if(account)US.push(account);try{await window.mvidaAuth.saveState()}catch(error){FU.pop();if(account)US.pop();throw error}if(account){const result=await window.mvidaAuth.resetPassword(email);account.authManaged=true;lg('Registo de funcionário',`${n} (${f}) registado`);rfu();$('gb').innerHTML=`<p style="color:var(--mu);line-height:1.55;margin-bottom:12px">Entregue esta palavra-passe temporária ao funcionário por um canal seguro. A alteração será obrigatória no primeiro acesso.</p><code class="temporary-password">${result.temporaryPassword}</code>`;$('gf').innerHTML='<button class="btn gc">Fechar</button>';return 'k'}lg('Registo de funcionário',`${n} (${f}) registado`);rfu();toast('Funcionário registado')},'Guardar',1);
+$('f_f').onchange=e=>{const f=e.target.value,m=f==='Médico';$('fm').style.display=$('fh').style.display=m?'':'none';$('fo').style.display=m?'none':'';$('fi').textContent=!f?'Seleccione a função para ver o acesso ao sistema.':AF[f]?`Acesso ao sistema: perfil ${AF[f]}. Será criada uma palavra-passe temporária, que deverá ser alterada no primeiro acesso.`:'Esta função não tem acesso ao sistema.'}};
+const dfu=i=>{const x=FU[i];if(CO.some(c=>c.med===x.n)){toast('Não é possível eliminar este médico porque está associado a uma consulta.');return}conf(`Eliminar o funcionário ${x.n}? Se tiver histórico, é preferível passá-lo a Inactivo.`,()=>{lg('Eliminação de funcionário',`${x.n} eliminado`,'Aviso');FU.splice(i,1);rfu()})};
+/* ---------- UTILIZADORES ---------- */
+const UX={q:'',e:'Todos'};
+function rus(){const q=norm(UX.q),r=[];US.forEach((x,i)=>{if(UX.e!=='Todos'&&x.st!==UX.e)return;if(q&&norm([x.n,x.e,x.pf].join(' ')).indexOf(q)<0)return;const actions=x.protectedAdministrator?['v','h']:['v','h','e','d'];r.push({i,c:[x.n,x.e,x.pf,tag(x.st),acts(actions)]})});tbl('tus',['Nome','E-mail','Perfil','Estado','Ações'],r)}
+RR.tus=rus;
+const vus=i=>{const x=US[i],canReset=ADM()&&x.e.toLowerCase()!==USER.e.toLowerCase();dm('Detalhes do Utilizador','user-round',x.n,[['Perfil',x.pf],['E-mail',x.e],['Estado',x.st]],[['Criado em','—'],['Último acesso','—']],[['Dados Pessoais',kvg([['Nome',x.n],['E-mail',x.e],['Perfil',x.pf]])],['Acesso',kvg([['Estado da conta',x.st],['Palavra-passe',x.authManaged?'Gerida de forma segura':'A aguardar configuração']])],['Observações',nobs()]],canReset?'<button class="btn o" id="reset-user-password"><i data-lucide="key-round"></i>Repor palavra-passe</button>':'');if(canReset)$('reset-user-password').onclick=()=>askConfirm('Repor palavra-passe',`Será gerada uma palavra-passe temporária para ${x.n}. O utilizador terá de a alterar no próximo acesso.`,'Repor palavra-passe',()=>showTemporaryPassword(i))};
+const PFS=['Administrador','Recepção','Médico'];
+const eus=i=>{const x=US[i];form('Editar utilizador',hd(x.n,`<span class="tag t-b">${x.pf}</span>`)+`<div class="sg2" style="grid-template-columns:1fr">${sc('Conta',fi('E-mail',x.e,'email','f_e')+sl('Perfil de acesso',PFS,x.pf,'f_p')+sl('Estado da conta',['Activa','Desactivada'],x.st,'f_s'))}</div>`,async()=>{if(!/^\S+@\S+\.\S+$/.test(V('f_e'))){toast('Indique um e-mail válido.');return false}if(V('f_e').toLowerCase()!==x.e.toLowerCase()){toast('O e-mail de acesso não pode ser alterado depois da criação da conta.');return false}const profile=$('f_p').value,status=$('f_s').value;await window.mvidaAuth.updateAccess(x.e,profile,status);Object.assign(x,{pf:profile,st:status});lg('Actualização de utilizador',`Conta de ${x.n} actualizada`);rus();toast('Guardado com sucesso')})};
+async function showTemporaryPassword(i){const user=US[i];try{const result=await window.mvidaAuth.resetPassword(user.e);user.authManaged=true;lg('Reposição de palavra-passe',`Acesso temporário gerado para ${user.n}`,'Aviso');M('Palavra-passe temporária',`<p style="color:var(--mu);line-height:1.55;margin-bottom:12px">Entregue esta palavra-passe ao utilizador por um canal seguro. Ela será válida até à alteração obrigatória no próximo acesso.</p><code class="temporary-password">${result.temporaryPassword}</code>`,'<button class="btn gc">Fechar</button>')}catch(error){toast(error.message||'Não foi possível repor a palavra-passe.')}}
+const nus=()=>{const sem=FU.filter(x=>!x.a&&x.st==='Activo');if(!sem.length){M('Novo utilizador','<p style="color:var(--mu);margin:0">Todos os funcionários activos já têm conta de acesso.</p>');return}
+form('Novo utilizador',`<div class="fg">${sl('Funcionário (sem conta)',['',...sem.map(x=>x.n+' · '+x.f)],'','f_u')}${fi('E-mail de acesso','','email','f_e')}${sl('Perfil de acesso',['',...PFS],'','f_p')}<div class="info" style="grid-column:1/-1">Será gerada uma palavra-passe temporária. Entregue-a ao utilizador; no primeiro acesso será obrigatório definir uma nova.</div></div>`,async()=>{const f=$('f_u').value,p=$('f_p').value,email=V('f_e');if(!f||!p||!/^\S+@\S+\.\S+$/.test(email)){toast('Escolha o funcionário, o perfil e indique um e-mail válido.');return false}const n=f.split(' · ')[0],fx=FU.find(x=>x.n===n);if(US.some(user=>user.e.toLowerCase()===email.toLowerCase())){toast('Já existe um utilizador com este e-mail.');return false}fx.a=p;fx.e=email;US.push({n,e:email,pf:p,st:'Activa'});await window.mvidaAuth.saveState();const result=await window.mvidaAuth.resetPassword(email);US[US.length-1].authManaged=true;lg('Criação de utilizador',`Conta criada para ${n}`);rus();$('gb').innerHTML=`<p style="color:var(--mu);line-height:1.55;margin-bottom:12px">Entregue esta palavra-passe ao utilizador por um canal seguro. A alteração será obrigatória no primeiro acesso.</p><code class="temporary-password">${result.temporaryPassword}</code>`;$('gf').innerHTML='<button class="btn gc">Fechar</button>';return 'k'})};
+const dus=i=>{if(US[i].protectedAdministrator){toast('A conta principal do administrador não pode ser eliminada.');return}conf(`Eliminar a conta de ${US[i].n}?`,()=>{lg('Eliminação de utilizador',`Conta de ${US[i].n} eliminada`,'Aviso');US.splice(i,1);rus()})};
+/* ---------- CONSULTAS ---------- */
+let cur=TODAY,cm='mes';const ESF={};
+const cok=x=>ESF[x.esp]!==false;
+const isDoctor=()=>USER?.pf==='Médico';
+const ownAppointment=x=>!isDoctor()||x.med===USER.n;
+const ECL={Agendada:'b','Em curso':'o','Concluída':'g',Cancelada:'x',Faltou:'r'};
+const slots=(m,d,keep)=>{const f=FU.find(x=>x.n===m),h=f&&f.h&&f.h.find(z=>z[0]===DW[wd(d)]);if(!h)return[];const o=[],a=+h[1].slice(0,2)*60+ +h[1].slice(3),b=+h[2].slice(0,2)*60+ +h[2].slice(3);for(let t=a;t<b;t+=30){const s=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');if(s===keep||!CO.some(c=>c.med===m&&c.d===d&&c.h===s&&c.st!=='Cancelada'))o.push(s)}return o};
+const evs=d=>CO.map((x,i)=>({x,i})).filter(o=>o.x.d===d&&cok(o.x)&&ownAppointment(o.x)).sort((a,b)=>a.x.h<b.x.h?-1:1);
+const evh=o=>`<span class="ev ${ECL[o.x.st]}" data-ev="${o.i}" title="${o.x.pac} · ${o.x.med} · ${o.x.st}">${o.x.h} - ${o.x.pac.split(' ')[0]}</span>`;
+function rcal(){Q('#cmodes .sg').forEach(b=>b.classList.toggle('on',b.dataset.m===cm));let t,h='';
+if(cm==='mes'){const y=+cur.slice(0,4),mo=+cur.slice(5,7)-1,f=iso(new Date(Date.UTC(y,mo,1))),off=wd(f),nd=new Date(Date.UTC(y,mo+1,0)).getUTCDate(),rows=Math.ceil((off+nd)/7);t=MN[mo]+' '+y;h='<div class="mes">'+DC.map(d=>`<b>${d}</b>`).join('');for(let k=0;k<rows*7;k++){const d=add(f,k-off),o=d.slice(5,7)!==cur.slice(5,7);h+=`<div${d===TODAY?' style="background:var(--gl)"':''}><span${o?' class="m"':''}>${+d.slice(8)}</span>${o?'':evs(d).map(evh).join('')}</div>`}h+='</div>'}
+else{const s=cm==='sem'?add(cur,-wd(cur)):cur,n=cm==='sem'?7:1;t=cm==='sem'?`Semana de ${br(s).slice(0,5)} a ${br(add(s,6)).slice(0,5)}`:`${DW[wd(cur)]}, ${+cur.slice(8)} de ${MN[+cur.slice(5,7)-1]} de ${cur.slice(0,4)}`;h='<div class="dl">';for(let k=0;k<n;k++){const d=add(s,k),e=evs(d);h+=`<div class="dr"><b>${DW[wd(d)]} ${br(d).slice(0,5)}</b><div class="els">${e.length?e.map(evh).join(''):'<span style="color:var(--mu);font-size:12.5px">Sem consultas</span>'}</div></div>`}h+='</div>'}
+$('ct').innerHTML='<i data-lucide="calendar"></i>'+t;$('cbody').innerHTML=h;ic()}
+const crows=(f)=>{const r=[];CO.forEach((x,i)=>{if(cok(x)&&ownAppointment(x)&&f(x))r.push({i,k:x.d+x.h,c:[br(x.d),x.h,x.pac,x.med,x.esp,tag(x.st),acts(isDoctor()?(x.st==='Agendada'?['v','e']:['v']):['v','h','e','d'])]})});return r.sort((a,b)=>a.k<b.k?-1:1)};
+const CH=['Data','Hora','Paciente','Médico','Especialidade','Estado','Ações'];
+function rco(){rcal();tbl('tco1',CH,crows(()=>true));tbl('tco2',CH,crows(x=>x.d>=TODAY&&(x.st==='Agendada'||x.st==='Em curso')))}
+RR.tco1=RR.tco2=rco;
+const vco=i=>{const x=CO[i];dm('Detalhes da Consulta','calendar-days',x.pac,[['Data',br(x.d)],['Hora',x.h],['Médico',x.med]],[['Especialidade',x.esp],['Estado',x.st]],[['Resumo',kvg([['Paciente',x.pac],['Médico',x.med],['Data',br(x.d)],['Hora',x.h],['Especialidade',x.esp],['Estado',x.st]])],['Motivo',`<div class="tp" style="color:var(--mu)">${x.mo||'Sem motivo registado.'}</div>`],['Observações',nobs()]])};
+const eco=i=>{const x=CO[i];if(isDoctor()){if(x.med!==USER.n){toast('Só pode atualizar as suas próprias consultas.');return}if(x.st!=='Agendada'){toast('Só pode concluir ou cancelar consultas agendadas.');return}form('Atualizar estado da consulta',hd(x.pac,`<span class="tag t-b">${x.esp}</span>`)+`<div class="fg" style="margin-top:16px"><label class="fl">Data<input class="busca" value="${br(x.d)}" disabled></label><label class="fl">Hora<input class="busca" value="${x.h}" disabled></label>${sl('Novo estado',['Concluída','Cancelada'],'','f_s')}<label class="fl w">Médico<input class="busca" value="${x.med}" disabled></label></div>`,()=>{if(!['Concluída','Cancelada'].includes($('f_s').value)){toast('Escolha concluir ou cancelar a consulta.');return false}x.st=$('f_s').value;lg('Actualização de consulta',`Consulta de ${x.pac} · ${x.st}`);rco();rin();toast(`Consulta ${x.st.toLowerCase()}`)},'Confirmar estado',1);return}form('Editar consulta',hd(x.pac,`<span class="tag t-b">${x.esp}</span>`)+`<div class="fg" style="margin-top:16px">${fi('Data',x.d,'date','f_d')}${sl('Hora',slots(x.med,x.d,x.h),x.h,'f_h')}${sl('Estado',['Agendada','Em curso','Concluída','Cancelada','Faltou'],x.st,'f_s')}<label class="fl">Médico<input class="busca" value="${x.med}" disabled></label><label class="fl w">Motivo<textarea class="busca" id="f_m" rows="2">${x.mo||''}</textarea></label></div>`,()=>{const d=$('f_d').value;if(!d||!$('f_h').value){toast('Indique a data e uma hora livre.');return false}Object.assign(x,{d,h:$('f_h').value,st:$('f_s').value,mo:V('f_m')});lg('Actualização de consulta',`Consulta de ${x.pac} · ${x.st}`);rco();rin();toast('Guardado com sucesso')},'Guardar',1);
+$('f_d').onchange=()=>{const o=slots(x.med,$('f_d').value,'');$('f_h').innerHTML=o.length?o.map(s=>`<option>${s}</option>`).join(''):'<option value="">Sem horários livres</option>'}};
+const nco=()=>{if(isDoctor()){toast('O perfil Médico não pode criar consultas.');return}const md=FU.filter(x=>x.f==='Médico'&&x.st==='Activo'),pc=PA.filter(x=>x.st==='Activo');form('Nova consulta',`<div class="fg">${sl('Paciente',['',...pc.map(x=>x.n)],'','f_p')}${sl('Médico',['',...md.map(x=>x.n+' · '+x.s)],'','f_m')}${fi('Data',TODAY,'date','f_d')}<label class="fl">Hora livre<select class="sel" id="f_h"><option value="">Seleccione o médico</option></select></label><label class="fl w">Motivo (opcional)<textarea class="busca" id="f_mo" rows="2"></textarea></label></div>`,()=>{const p=$('f_p').value,m=$('f_m').value,d=$('f_d').value,h=$('f_h').value;if(!p||!m||!d||!h){toast('Escolha o paciente, o médico, a data e uma hora livre.');return false}const n=m.split(' · ');CO.push({d,h,pac:p,med:n[0],esp:n[1],st:'Agendada',mo:V('f_mo')});lg('Marcação de consulta',`Consulta de ${p} marcada`);rco();rin();toast('Consulta agendada')},'Agendar',1);
+const up=()=>{const m=$('f_m').value.split(' · ')[0],o=m?slots(m,$('f_d').value,''):[];$('f_h').innerHTML=!m?'<option value="">Seleccione o médico</option>':o.length?o.map(s=>`<option>${s}</option>`).join(''):'<option value="">Sem horários livres</option>'};$('f_m').onchange=$('f_d').onchange=up};
+const dco=i=>{if(isDoctor()){toast('O perfil Médico não pode eliminar consultas.');return}conf(`Eliminar a consulta de ${CO[i].pac} (${br(CO[i].d)} às ${CO[i].h})?`,()=>{lg('Eliminação de consulta',`Consulta de ${CO[i].pac} eliminada`,'Aviso');CO.splice(i,1);rco();rin()})};
+/* ---------- PAGAMENTOS ---------- */
+let pt='rec';const PTF={rec:x=>x.st==='Pago',pag:x=>x.st!=='Pendente',pen:x=>x.st==='Pendente',his:()=>true};
+const rec=i=>docM(cfgRec(PG[i]),'Recibo R-'+(PG[i].d||TODAY).slice(0,4)+'-'+String(PG[i].id).padStart(4,'0'));
+function rpg(){Q('#tbp button').forEach(b=>b.classList.toggle('on',b.dataset.p===pt));const s=a=>PG.filter(x=>x.st===a).reduce((t,x)=>t+x.v,0),at=PG.filter(x=>x.st==='Pendente'&&x.d<add(TODAY,-2)).reduce((t,x)=>t+x.v,0);
+$('kpg').innerHTML=[['k2','wallet','Total Recebido',s('Pago')],['k3','clock','Pendentes',s('Pendente')],['k4','alert-circle','Em Atraso',at]].map(k=>`<div class="card kpi ${k[0]}"><div class="ic"><i data-lucide="${k[1]}"></i></div><div><small>${k[2]}</small><b>${mt(k[3])}</b></div></div>`).join('');
+const r=[];PG.forEach((x,i)=>{if(!PTF[pt](x))return;r.push({i,k:x.d,c:[br(x.d),x.pac,x.ds,x.m,mt(x.v),tag(x.st),acts(['v','h',...(x.st==='Pago'?['r']:[]),...(x.st==='Pendente'?['p']:[]),'e','d'])]})});r.sort((a,b)=>a.k<b.k?1:-1);
+tbl('tpg',['Data','Paciente','Descrição','Método','Valor','Estado','Ações'],r)}
+RR.tpg=rpg;
+const vpg=i=>{const x=PG[i];dm('Detalhes do Pagamento','wallet',x.pac,[['Data',br(x.d)],['Valor',mt(x.v)],['Estado',x.st]],[['Método',x.m],['Descrição',x.ds]],[['Resumo',kvg([['Paciente',x.pac],['Descrição',x.ds],['Valor',mt(x.v)],['Método',x.m],['Estado',x.st],['Data',br(x.d)]])],['Observações',nobs()]])};
+const MET=['Dinheiro','Cartão','Transferência','Pagamento móvel'],DYN={'Cartão':'4 últimos dígitos do cartão','Transferência':'Nº do comprovativo','Pagamento móvel':'Número de telemóvel (M-Pesa)'};
+const fpgw=()=>{const s=$('f_mt'),d=$('dyn');s.onchange=()=>{const m=DYN[s.value];d.style.display=m?'':'none';if(m)d.firstChild.textContent=m};};
+const ppg=i=>{const x=PG[i];form('Registar pagamento',`<div class="fg"><label class="fl w">Consulta<input class="busca" disabled value="${x.pac} · ${x.ds} · ${br(x.d)}"></label>${fi('Valor a pagar',mt(x.v),'text')}${sl('Forma de pagamento',MET,'Dinheiro','f_mt')}<label class="fl w" id="dyn" style="display:none"><span></span><input class="busca" id="f_dy"></label></div>`.replace('<input class="busca" type="text" value="'+mt(x.v)+'">','<input class="busca" disabled value="'+mt(x.v)+'">'),()=>{const m=$('f_mt').value;if(DYN[m]&&!V('f_dy')){toast('Preencha: '+DYN[m]+'.');return false}Object.assign(x,{st:'Pago',m,d:TODAY});lg('Pagamento registado',`Pagamento de ${x.pac} · ${mt(x.v)}`);rpg();rin();toast('Pagamento registado');setTimeout(()=>rec(i),50);return 'k'},'Registar pagamento');fpgw()};
+const npg=()=>{const p=PG.map((x,i)=>({x,i})).filter(o=>o.x.st==='Pendente');if(!p.length){M('Novo pagamento','<p style="color:var(--mu);margin:0">Não há consultas por pagar.</p>');return}
+form('Novo pagamento',`<div class="fg">${sl('Consulta',['',...p.map(o=>o.x.pac+' · '+o.x.ds+' · '+br(o.x.d))],'','f_c')}<label class="fl">Valor a pagar<input class="busca" id="f_v" disabled placeholder="—"></label>${sl('Forma de pagamento',MET,'Dinheiro','f_mt')}<label class="fl w" id="dyn" style="display:none"><span></span><input class="busca" id="f_dy"></label><label class="fl w">Observações (opcional)<input class="busca"></label></div>`,()=>{const c=$('f_c').selectedIndex-1;if(c<0){toast('Escolha a consulta.');return false}const m=$('f_mt').value;if(DYN[m]&&!V('f_dy')){toast('Preencha: '+DYN[m]+'.');return false}const o=p[c],x=o.x;Object.assign(x,{st:'Pago',m,d:TODAY});lg('Pagamento registado',`Pagamento de ${x.pac} · ${mt(x.v)}`);rpg();rin();toast('Pagamento registado');setTimeout(()=>rec(o.i),50);return 'k'},'Registar pagamento');fpgw();$('f_c').onchange=()=>{const c=$('f_c').selectedIndex-1;$('f_v').value=c<0?'':mt(p[c].x.v)}};
+const epg=i=>{const x=PG[i];form('Editar pagamento',`<div class="fg">${fi('Descrição',x.ds,'text','f_ds')}${sl('Forma de pagamento',['—',...MET],x.m,'f_mt')}${sl('Estado',['Pago','Pendente','Anulado'],x.st,'f_s')}</div>`,()=>{Object.assign(x,{ds:V('f_ds'),m:$('f_mt').value,st:$('f_s').value});lg('Actualização de pagamento',`Pagamento de ${x.pac} actualizado`);rpg();rin();toast('Guardado com sucesso')})};
+const dpg=i=>conf(`Eliminar o pagamento de ${PG[i].pac} (${mt(PG[i].v)})?`,()=>{lg('Eliminação de pagamento',`Pagamento de ${PG[i].pac} eliminado`,'Aviso');PG.splice(i,1);rpg();rin()});
+/* ---------- RELATÓRIOS ---------- */
+const RT={geral:['Relatório Geral','Resumo geral de todas as operações do sistema.'],consultas:['Relatório de Consultas','Consultas realizadas e agendadas no período.'],pacientes:['Relatório de Pacientes','Lista de pacientes registados.'],pagamentos:['Relatório de Pagamentos','Pagamentos recebidos no período.'],funcionarios:['Relatório de Funcionários','Equipa da clínica por função.']},RI={geral:'bar-chart-3',consultas:'calendar-days',pacientes:'heart-pulse',pagamentos:'credit-card',funcionarios:'stethoscope'};
+const cnt=(a,f)=>{const o={};a.forEach(x=>o[f(x)]=(o[f(x)]||0)+1);return Object.entries(o).map(e=>e[0]+': '+e[1]).join(' · ')||'—'};
+function gen(ty,a,b){const inP=d=>d>=a&&d<=b,co=CO.filter(x=>inP(x.d)),pg=PG.filter(x=>inP(x.d)),sum=s=>pg.filter(x=>x.st===s).reduce((t,x)=>t+x.v,0);
+const tc={h:['Data','Paciente','Médico','Estado'],r:co.map(x=>[br(x.d)+' '+x.h,x.pac,x.med,x.st])},tp={h:['Nome','Nº Processo','Telefone','E-mail','Estado'],r:PA.map(x=>[x.n,x.p,x.t,x.e,x.st])},tg={h:['Data','Paciente','Descrição','Valor','Estado'],r:pg.map(x=>[br(x.d),x.pac,x.ds,mt(x.v),x.st])},tf={h:['Nome','Função','Sector','Estado'],r:FU.map(x=>[x.n,x.f,x.s,x.st])};
+if(ty==='consultas')return{k:[['Consultas no período',co.length],['Por estado',cnt(co,x=>x.st)],['Por especialidade',cnt(co,x=>x.esp)]],...tc};
+if(ty==='pacientes')return{k:[['Pacientes registados',PA.length],['Por estado',cnt(PA,x=>x.st)]],...tp};
+if(ty==='pagamentos')return{k:[['Total recebido',mt(sum('Pago'))],['Pendente',mt(sum('Pendente'))],['Anulado',mt(sum('Anulado'))]],...tg};
+if(ty==='funcionarios')return{k:[['Funcionários',FU.length],['Por função',cnt(FU,x=>x.f)],['Por estado',cnt(FU,x=>x.st)]],...tf};
+return{k:[['Consultas no período',co.length],['Pacientes registados',PA.length],['Funcionários',FU.length],['Total recebido',mt(sum('Pago'))]],...tc}}
+const mkrl=(ty,a,b,g)=>({ty,t:RT[ty][0],d:RT[ty][1],a,b,g,c:gen(ty,a,b)});
+let RL=[];
+const rper=x=>br(x.a)+' – '+br(x.b),rgt=x=>br(x.g.slice(0,10))+' '+x.g.slice(11);
+function rrl(){$('rk').innerHTML=[['k1','bar-chart-3','Relatórios Gerados',RL.length],['k2','users','Pacientes Registados',PA.length],['k3','calendar-days','Consultas Registadas',CO.length]].map(k=>`<div class="card kpi ${k[0]}"><div class="ic"><i data-lucide="${k[1]}"></i></div><div><small>${k[2]}</small><b>${k[3]}</b></div></div>`).join('');$('rcount').textContent='Relatórios gerados: '+RL.length;
+tbl('trl',['#','Relatório','Descrição','Período','Data geração','Formato','Ações'],RL.map((x,i)=>({i,c:[i+1,`<b style="display:flex;align-items:center;gap:8px"><i data-lucide="${RI[x.ty]}"></i>${x.t}</b>`,x.d,rper(x),rgt(x),'<span class="tag t-r">PDF</span>',acts(['v','x','d'])]})))}
+RR.trl=rrl;
+const vrl=i=>docM(cfgRel(RL[i]),RL[i].t);
+const nrl=()=>form('Gerar Relatório',`<div class="fg">${sl('Tipo de Relatório *',['',...Object.keys(RT).map(k=>RT[k][0])],'','f_t')}${fi('De',add(TODAY,-30),'date','f_a')}${fi('Até',TODAY,'date','f_b')}<div class="info" style="grid-column:1/-1">Os dados são filtrados com base no período seleccionado.</div></div>`,()=>{const k=Object.keys(RT).find(k=>RT[k][0]===$('f_t').value),a=$('f_a').value,b=$('f_b').value;if(!k){toast('Seleccione o tipo de relatório.');return false}if(!a||!b||a>b){toast('Indique um período válido.');return false}RL.unshift(mkrl(k,a,b,TODAY+' '+hhmm()));lg('Geração de relatório',RT[k][0]);rrl();X();vrl(0);toast('Relatório gerado');return 'k'},'Gerar Relatório');
+const drl=i=>conf(`Eliminar o ${RL[i].t.toLowerCase()}?`,()=>{RL.splice(i,1);rrl()});
+const J=()=>window.jspdf&&window.jspdf.jsPDF;
+function save(f,b){if(!window.claude){toast('Download indisponível nesta pré-visualização.');return}claude.use('downloads').then(dl=>{if(!dl){toast('Download indisponível aqui.');return}dl.save({filename:f,data:b}).then(()=>toast('Ficheiro guardado'),e=>{if(!e||e.code!=='declined')toast('Não foi possível guardar o ficheiro.')})})}
+const clip=(d,s,w)=>d.splitTextToSize(String(s),w)[0];
+/* ---------- AUDITORIA ---------- */
+const AX={p:'Últimos 30 dias',u:'Todos',q:''};
+function rau(){const us=['Todos',...new Set(AU.map(x=>x.u))];$('afu').innerHTML=us.map(u=>`<option${u===AX.u?' selected':''}>${u}</option>`).join('');const lim=AX.p==='Todos'?'':add(TODAY,AX.p==='Últimos 30 dias'?-30:-365),q=norm(AX.q),r=[];
+AU.forEach((x,i)=>{if(lim&&x.d<lim||AX.u!=='Todos'&&x.u!==AX.u)return;if(q&&norm([x.u,x.op,x.ds,x.ip].join(' ')).indexOf(q)<0)return;r.push({i,c:[br(x.d)+' '+x.h,x.u,x.op,x.ds,tag(x.nv),x.ip]})});tbl('tau',['Data/Hora','Utilizador','Operação','Descrição','Nível','IP'],r,8)}
+RR.tau=rau;
+/* ---------- ligação de eventos ---------- */
+const ACTS={tpa:{v:vpa,e:epa,d:dpa},tfu:{v:vfu,e:efu,d:dfu},tus:{v:vus,e:eus,d:dus},tco1:{v:vco,e:eco,d:dco},tco2:{v:vco,e:eco,d:dco},tpg:{v:vpg,r:rec,p:ppg,e:epg,d:dpg},trl:{v:vrl,x:i=>pdfDoc(cfgRel(RL[i])),d:drl},tin:{}};
+const SEC={'Início':['v-inicio',rin],Consultas:['v-consultas',rco],Pacientes:['v-pacientes',rpa],Pagamentos:['v-pagamentos',rpg],'Relatórios':['v-relatorios',rrl],'Funcionários':['v-funcionarios',rfu],Utilizadores:['v-utilizadores',rus],Auditoria:['v-auditoria',rau],Sobre:['v-sobre',()=>{}]};
+Q('nav a,.sair').forEach(a=>{a.title=a.querySelector('.lbl').textContent});
+Q('nav a').forEach(a=>a.addEventListener('click',()=>{if(MUST_CHANGE_PASSWORD){openPasswordChange(true);return}const s=SEC[a.querySelector('.lbl').textContent];if(!s)return;Q('nav a').forEach(x=>x.classList.toggle('on',x===a));Q('main section.page').forEach(e=>{e.classList.toggle('off',e.id!==s[0]);e.scrollTop=0});s[1]()}));
+$('hb').addEventListener('click',()=>document.body.classList.toggle(innerWidth<=820?'open':'col'));
+document.addEventListener('click',async e=>{const t=e.target;let b;const B=document.body;
+if(B.classList.contains('open')&&!t.closest('.hamb')&&(!t.closest('aside')||t.closest('nav a')))B.classList.remove('open');
+if(MUST_CHANGE_PASSWORD&&(t.closest('.gc')||t.closest('#gx')||t===$('gm')))return;
+if(!t.closest('#np,.bell'))$('np').classList.add('off');
+if(b=t.closest('.bell')){$('np').classList.toggle('off');return}
+if(t.closest('#ml')){$('nd').style.display='none';return}
+if(b=t.closest('.ia')){const tr=b.closest('tr'),f=(ACTS[tr.dataset.t]||{})[b.dataset.a];if(f)f(+tr.dataset.i);return}
+if(b=t.closest('.pgb')){PG0[b.dataset.t]=+b.dataset.p;RR[b.dataset.t]();return}
+if(b=t.closest('.ev')){vco(+b.dataset.ev);return}
+if(t.closest('#ok')){const b=t.closest('#ok'),run=async()=>{try{const r=OK&&await OK();if(r!==false&&r!=='k')X()}catch(error){toast(error.message||'Não foi possível concluir a operação.')}};if(b.dataset.confirmEdit){askConfirm('Confirmar alteração','Confirma que pretende aplicar esta alteração aos dados do sistema?','Confirmar alteração',run);return}await run();return}
+if(t.closest('#dpdf')){PDF&&PDF();return}
+if(t.closest('.gc')||t.closest('#gx')||t===$('gm'))X()});
+document.addEventListener('change',e=>{const d=e.target.closest('.dw');if(d&&e.target.type==='checkbox'){d.classList.toggle('of',!e.target.checked);Q('.tm input',d).forEach(i=>i.disabled=!e.target.checked)}});
+$('bnp').onclick=npa;$('bnf').onclick=nfu;$('bnu').onclick=nus;$('bnc').onclick=nco;$('bpg').onclick=npg;$('gr').onclick=nrl;
+$('bpq').oninput=e=>{FP.q=e.target.value;PG0.tpa=0;rpa()};
+$('bfp').onclick=()=>form('Filtros',`<div class="fg">${sl('Estado',['','Activo','Inactivo'],FP.st,'f_st')}${sl('Tipo sanguíneo',['','A+','A-','B+','B-','AB+','AB-','O+','O-'],FP.tb,'f_tb')}</div>`,()=>{FP.st=$('f_st').value;FP.tb=$('f_tb').value;PG0.tpa=0;rpa()},'Aplicar');
+$('bfq').oninput=e=>{FX.q=e.target.value;PG0.tfu=0;rfu()};$('ffn').onchange=e=>{FX.f=e.target.value;PG0.tfu=0;rfu()};$('fst').onchange=e=>{FX.e=e.target.value;PG0.tfu=0;rfu()};
+$('buq').oninput=e=>{UX.q=e.target.value;PG0.tus=0;rus()};$('bus').onchange=e=>{UX.e=e.target.value;PG0.tus=0;rus()};
+$('afp').onchange=e=>{AX.p=e.target.value;PG0.tau=0;rau()};$('afu').onchange=e=>{AX.u=e.target.value;PG0.tau=0;rau()};$('aq').oninput=e=>{AX.q=e.target.value;PG0.tau=0;rau()};
+Q('#tbc button').forEach(b=>b.onclick=()=>{Q('#tbc button').forEach(x=>x.classList.toggle('on',x===b));$('pcal').classList.toggle('off',b.dataset.c!=='cal');$('tco1').classList.toggle('off',b.dataset.c!=='lis');$('tco2').classList.toggle('off',b.dataset.c!=='age')});
+Q('#tbp button').forEach(b=>b.onclick=()=>{pt=b.dataset.p;PG0.tpg=0;rpg()});
+Q('#cmodes .sg').forEach(b=>b.onclick=()=>{cm=b.dataset.m;rcal()});
+const step=k=>{cur=cm==='mes'?iso(new Date(Date.UTC(+cur.slice(0,4),+cur.slice(5,7)-1+k,1))):add(cur,k*(cm==='sem'?7:1));rcal()};
+$('cp').onclick=()=>step(-1);$('cn').onclick=()=>step(1);$('ch').onclick=()=>{cur=TODAY;rcal()};
+$('esp').innerHTML='<h3>Especialidades</h3>'+ESPS.slice(0,5).map(e=>`<label><input type="checkbox" checked data-e="${e}">${e}</label>`).join('');
+Q('#esp input').forEach(c=>c.onchange=()=>{ESF[c.dataset.e]=c.checked;rco()});
+const PERMS={Administrador:['Início','Consultas','Pacientes','Pagamentos','Relatórios','Funcionários','Utilizadores','Auditoria','Sobre'],Médico:['Início','Consultas','Sobre'],Recepção:['Início','Consultas','Pacientes','Pagamentos','Funcionários','Sobre']};
+const lerr=m=>{$('ler').textContent=m;$('ler').style.display=m?'':'none'};
+function openPasswordChange(required){form(required?'Alterar palavra-passe':'Alterar a minha palavra-passe',`<div class="fg">${fi('Palavra-passe actual','','password','current-password')}${fi('Nova palavra-passe (mínimo 10 caracteres)','','password','new-password')}${fi('Confirmar nova palavra-passe','','password','confirm-password')}</div>`,async()=>{const currentPassword=$('current-password').value,newPassword=$('new-password').value;if(newPassword.length<10){toast('A nova palavra-passe deve ter pelo menos 10 caracteres.');return false}if(newPassword!==$('confirm-password').value){toast('As novas palavras-passe não coincidem.');return false}await window.mvidaAuth.changePassword(currentPassword,newPassword);MUST_CHANGE_PASSWORD=false;lg('Alteração de palavra-passe','Utilizador alterou a sua palavra-passe','Informação');toast('Palavra-passe alterada com sucesso.');return true},'Guardar nova palavra-passe');if(required){$('gf').querySelector('.gc')?.remove();$('gx').style.display='none'}}
+function entrar(u){USER=u;const account=US.find(x=>x.e.toLowerCase()===u.e.toLowerCase());if(account){account.pf=u.pf;account.protectedAdministrator=u.protectedAdministrator===true}document.body.classList.remove('auth-pending');$('lgn').classList.add('off');Q('nav a').forEach(a=>a.style.display=PERMS[u.pf]?.includes(a.querySelector('.lbl').textContent)?'':'none');$('bnc').style.display=isDoctor()?'none':'';Q('header .user b')[0].textContent=u.n;Q('header .user small')[0].textContent=u.pf;Q('header .user .av')[0].textContent=ini(u.n);Q('.ht')[0].textContent='Bem-vindo(a), '+u.n+'!';lg('Início de sessão','Utilizador entrou no sistema','Informação');Q('nav a')[0].click();toast('Sessão iniciada');if(MUST_CHANGE_PASSWORD)openPasswordChange(true)}
+$('lf').onsubmit=e=>{e.preventDefault();const id=V('li').toLowerCase(),pw=$('lp').value;if(!id||!pw){lerr('Indique o e-mail e a palavra-passe.');return}const u=US.find(x=>x.e.toLowerCase()===id||x.n.toLowerCase()===id);if(!u){lerr('E-mail ou palavra-passe incorrectos.');return}if(u.st!=='Activa'){lerr('Esta conta está desactivada. Contacte o administrador.');return}lerr('');entrar(u)};
+$('lse').onclick=()=>{const p=$('lp'),h=p.type==='password';p.type=h?'text':'password';$('lse').innerHTML=`<i data-lucide="${h?'eye-off':'eye'}"></i>`;ic()};
+$('lfg').onclick=()=>M('Recuperar palavra-passe','<p style="margin:0;color:var(--mu);line-height:1.55">Para repor a sua palavra-passe, contacte a recepção da clínica ou o administrador do sistema. Receberá uma palavra-passe temporária, que deverá alterar no primeiro acesso.</p>','<button class="btn gc">Entendi</button>');
+Q('.user').forEach(a=>a.onclick=()=>openPasswordChange(false));
+Q('.user').forEach(a=>a.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openPasswordChange(false)}});
+function syncThemeButton(){const dark=document.documentElement.dataset.theme==='dark',label=dark?'Activar modo claro':'Activar modo escuro';$('theme-toggle').innerHTML=`<i data-lucide="${dark?'moon':'sun'}"></i>`;$('theme-toggle').setAttribute('aria-label',label);$('theme-toggle').title=label;$('theme-toggle').setAttribute('aria-pressed',String(dark));ic()}
+$('theme-toggle').onclick=()=>{const dark=document.documentElement.dataset.theme!=='dark';document.documentElement.dataset.theme=dark?'dark':'light';try{localStorage.setItem('mvida-theme',dark?'dark':'light')}catch(error){console.warn('Não foi possível guardar a preferência de tema.',error)}syncThemeButton()};
+syncThemeButton();
+Q('.sair').forEach(a=>a.onclick=()=>askConfirm('Confirmar saída','Tem a certeza de que pretende terminar a sessão no sistema?','Terminar sessão',async()=>{try{await window.mvidaAuth.logout()}catch(error){toast(error.message||'A sessão remota já não está activa.')}lg('Fim de sessão','Utilizador terminou a sessão','Informação');window.mvidaAuth.clearSession();USER=null;$('li').value=$('lp').value='';lerr('');$('lgn').classList.remove('off');document.body.classList.add('auth-pending');document.body.classList.remove('open')}));
+/* ---------- documentos no modelo de factura ---------- */
+const lines=a=>a.filter(Boolean).map(t=>`<div>${t}</div>`).join('');
+function docHtml(c){return `<div class="docw"><div class="doc"><i class="dd d1"></i><i class="dd d2"></i><i class="dd d3"></i><i class="dd d4"></i><i class="dd d5"></i><i class="dd d6"></i><div class="dsl">CUIDAMOS<br>DE SI,<br>SEMPRE.</div>
+<div class="dtop"><div class="dlogo"><span class="dlg"><i></i></span><b>Clínica</b><small>MAXI VIDA</small><u></u></div><div class="dmain"><h3>${c.title}</h3><div class="dinf"><div><small>${c.lbl1}</small>${lines(c.l1)}</div><div><small>${c.lbl2}</small>${lines(c.l2)}</div></div></div></div>
+<div class="dmeta"><span class="dar">▶▶</span>${c.meta.map(m=>`<div><small>${m[0]}</small><b>${m[1]}</b></div>`).join('')}</div>
+<table class="dtb"><thead><tr>${c.head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${c.rows.length?c.rows.map(r=>`<tr>${r.map((v,i)=>`<td${c.amt&&i===r.length-1?' class="am"':''}>${v}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${c.head.length}" style="color:#64748b">Sem registos.</td></tr>`}</tbody></table>
+<div class="dtot"><div>${c.tl.map(t=>`<div class="dtr"><small>${t[0]}</small><b>${t[1]}</b></div>`).join('')}</div><div class="dbox"><small>${c.tot[0]}</small><b>${c.tot[1]}</b></div></div>
+<div class="dft"><div><strong>${c.d[0]}:</strong><span>${c.d[1]}</span></div><div><strong>${c.p[0]}:</strong><span>${c.p[1]}</span></div></div>
+<div class="dsg">${c.stamp?`<span class="dst">${c.stamp}</span>`:''}<span class="dli">Assinatura</span></div></div></div>`}
+const docM=(c,t)=>{PDF=()=>pdfDoc(c);M(t||c.title,docHtml(c),'<button class="btn o" id="dpdf"><i data-lucide="download"></i>Baixar PDF</button><button class="btn gc">Fechar</button>',1)};
+function pdfDoc(c){const j=J();if(!j){toast('Biblioteca de PDF indisponível.');return}const d=new j({unit:'mm',format:'a4'}),IN=[59,75,216],TE=[18,168,160],BL=[47,123,240],GR=[18,201,138],GY=[100,116,139];
+const dia=(x,y,r,col)=>{d.setFillColor(...col);d.triangle(x-r,y,x,y-r,x+r,y,'F');d.triangle(x-r,y,x,y+r,x+r,y,'F')},lab=(t,x,y,sz)=>{d.setFont('helvetica','bold');d.setFontSize(sz||7);d.setTextColor(...IN);d.text(String(t).toUpperCase(),x,y,{charSpace:.5})},tx=(t,x,y,sz,b,col,o)=>{d.setFont('helvetica',b?'bold':'normal');d.setFontSize(sz);d.setTextColor(...(col||[15,23,42]));d.text(String(t),x,y,o)};
+dia(205,84,22,BL);dia(192,58,6,GR);dia(190,268,46,TE);dia(196,270,34,IN);dia(148,247,8,GR);dia(6,292,8,GR);d.setFillColor(...BL);d.triangle(38,298,56,278,74,298,'F');
+d.setTextColor(255,255,255);d.setFont('helvetica','bold');d.setFontSize(11);['CUIDAMOS','DE SI,','SEMPRE.'].forEach((t,i)=>d.text(t,158,262+i*8,{charSpace:.8}));
+d.setDrawColor(...TE);d.setLineWidth(1.2);d.roundedRect(15,18,16,16,4,4,'S');dia(23,26,4.5,BL);tx('Clínica',15,48,24,1,IN);tx('MAXI VIDA',15,54,9,0,IN,{charSpace:1});d.setLineWidth(.8);d.setDrawColor(...TE);d.line(15,58,37,58);d.setDrawColor(...IN);d.line(37,58,60,58);
+tx(c.title.toUpperCase(),75,26,15,1);lab(c.lbl1,75,38);lab(c.lbl2,128,38);[[c.l1,75],[c.l2,128]].forEach(g=>g[0].filter(Boolean).forEach((t,i)=>tx(d.splitTextToSize(String(t),48)[0],g[1],45+i*4.4,8.5)));
+d.setFillColor(...TE);d.triangle(15,80,15,88,21,84,'F');d.triangle(23,80,23,88,29,84,'F');[40,82,126].forEach((x,i)=>{lab(c.meta[i][0],x,81,6.5);tx(d.splitTextToSize(String(c.meta[i][1]),42)[0],x,88,11,1)});
+const n=c.head.length,W=n===3?[.34,.4,.26]:c.head.map(()=>1/n),xs=[];let a=21;W.forEach(w=>{xs.push(a);a+=w*168});
+const row=(r,y)=>r.forEach((v,i)=>tx(d.splitTextToSize(String(v),W[i]*168-4)[0],xs[i],y,8.5,c.amt&&i===n-1));
+c.head.forEach((h,i)=>lab(h,xs[i],111,8));let y=124,end=0;const per=Math.floor((268-124)/7);
+c.rows.forEach((r,k)=>{if(y>268){d.addPage();y=22;c.head.forEach((h,i)=>lab(h,xs[i],16,8))}row(r,y);y+=7});if(!c.rows.length)tx('Sem registos.',xs[0],y,8.5,0,GY);
+if(d.getNumberOfPages()===1){const h=Math.max(56,y-102+10);d.setDrawColor(...IN);d.setLineWidth(.3);d.rect(15,102,180,h,'S');d.line(15,116,195,116);y=102+h+14}else y+=10;
+if(y>205){d.addPage();y=24}
+c.tl.forEach((t,i)=>{lab(t[0],15,y+i*8);tx(d.splitTextToSize(String(t[1]),70)[0],52,y+i*8,10,1)});d.setFillColor(238,242,255);d.rect(128,y-5,67,14,'F');tx(String(c.tot[0]).toUpperCase(),132,y+4,9,0);tx(String(c.tot[1]),191,y+4.5,14,1,null,{align:'right'});
+const y2=y+c.tl.length*8+14;tx(c.d[0]+':',15,y2,11,1,IN);tx(c.d[1],15,y2+6,11,0,GY);tx(c.p[0]+':',70,y2,11,1,IN);tx(d.splitTextToSize(String(c.p[1]),60)[0],70,y2+6,11,0,GY);
+if(c.stamp){d.setDrawColor(...IN);d.setLineWidth(.8);d.circle(28,y2+30,13,'S');tx(c.stamp,28,y2+31,9,1,IN,{align:'center',angle:12})}d.setDrawColor(148,163,184);d.setLineWidth(.3);d.line(60,y2+34,115,y2+34);tx('Assinatura',87,y2+39,8,0,GY,{align:'center'});
+save((c.file||'documento.pdf'),d.output('blob'))}
+const pinfo=n=>{const p=PA.find(x=>x.n===n)||{};return[n,p.t,p.e,p.p?'Nº de processo '+p.p:'']};
+PG.forEach(x=>{const c=CO.find(c=>c.pac===x.pac);x.med=c?c.med:'—'});
+function cfgRec(x){const nr='R-'+(x.d||TODAY).slice(0,4)+'-'+String(x.id).padStart(4,'0'),m=FU.find(f=>f.n===x.med)||{};return{title:'Recibo de Pagamento',lbl1:'Informação do Paciente',l1:pinfo(x.pac),lbl2:'Médico Responsável',l2:[x.med||'—',m.s,m.t],meta:[['Nº do Recibo',nr],['Data',br(x.d)],['Forma de Pagamento',x.m]],head:['Item','Descrição','Valor'],rows:[[x.ds,x.m==='—'?'Por regularizar':'Pagamento por '+x.m.toLowerCase(),mt(x.v)]],amt:1,tl:[['Subtotal',mt(x.v)]],tot:['Total',mt(x.v)],d:['Data',br(x.d)],p:['Médico',x.med||'—'],stamp:x.st==='Pago'?'PAGO':x.st==='Anulado'?'ANULADO':'PENDENTE',file:'Recibo-'+nr+'.pdf'}}
+function cfgHis(p){const r=[],cs=CO.filter(c=>c.pac===p.n),ps=PG.filter(c=>c.pac===p.n);cs.forEach(c=>r.push([c.d+c.h,br(c.d)+' '+c.h,`Consulta · ${c.esp} — ${c.med}`,c.st]));ps.forEach(c=>r.push([c.d+'z',br(c.d),`Pagamento · ${c.ds} (${c.m})`,mt(c.v)+' · '+c.st]));r.sort((a,b)=>a[0]<b[0]?1:-1);
+return{title:'Histórico do Paciente',lbl1:'Informação do Paciente',l1:[p.n,p.t,p.e,'Nº de processo '+p.p],lbl2:'Dados Clínicos',l2:['Tipo sanguíneo: '+(p.tb||'—'),'Alergias: '+p.al],meta:[['Nº de Processo',p.p],['Emissão',br(TODAY)],['Registos',r.length]],head:['Data','Descrição','Estado / Valor'],rows:r.map(x=>x.slice(1)),tl:[['Consultas',cs.length],['Pagamentos',ps.length]],tot:['Total pago',mt(ps.filter(c=>c.st==='Pago').reduce((t,c)=>t+c.v,0))],d:['Data',br(TODAY)],p:['Emitido por',USER.n],stamp:'',file:'Historico-'+p.p+'.pdf'}}
+function cfgLog(x,tit,l2,extra){const r=AU.filter(a=>a.u===x.n||a.ds.indexOf(x.n)>=0).map(a=>[br(a.d)+' '+a.h,a.op,a.ds]);return{title:tit,lbl1:'Informação',l1:[x.n,x.e||x.t,x.f||x.pf],lbl2:l2[0],l2:l2[1],meta:[['Registos',r.length],['Emissão',br(TODAY)],['Perfil',x.f||x.pf]],head:['Data','Operação','Descrição'],rows:r.concat(extra||[]),tl:[['Registos',r.length+(extra||[]).length]],tot:['Total',r.length+(extra||[]).length],d:['Data',br(TODAY)],p:['Emitido por',USER.n],stamp:'',file:'Historico-'+x.n.replace(/\W+/g,'-')+'.pdf'}}
+function cfgRel(r){const c=r.c;return{title:r.t,lbl1:'Período',l1:[rper(r),r.d],lbl2:'Gerado por',l2:[USER.n,rgt(r)],meta:[['Tipo',r.t.replace(/^Relatório (de )?/,'')],['Gerado em',rgt(r)],['Formato','PDF']],head:c.h,rows:c.r,tl:c.k.map(k=>[k[0],k[1]]),tot:['Registos',c.r.length],d:['Data',rgt(r).slice(0,10)],p:['Gerado por',USER.n],stamp:'',file:r.t.replace(/\s+/g,'-')+'.pdf'}}
+const hpa=i=>docM(cfgHis(PA[i]),'Histórico · '+PA[i].n);
+const hfu=i=>{const x=FU[i],ex=x.f==='Médico'?CO.filter(c=>c.med===x.n&&c.st==='Concluída').map(c=>[br(c.d)+' '+c.h,'Consulta concluída',c.pac+' · '+c.esp]):[];docM(cfgLog(x,'Histórico do Funcionário',['Estado',[x.st,x.s,x.sd?'Saída: '+br(x.sd):'']],ex),'Histórico · '+x.n)};
+const hus=i=>{const x=US[i];docM(cfgLog(x,'Histórico do Utilizador',['Conta',[x.st,x.pf]]),'Histórico · '+x.n)};
+Object.assign(ACTS.tpa,{h:hpa});Object.assign(ACTS.tfu,{h:hfu});Object.assign(ACTS.tus,{h:hus});
+const hpn=n=>hpa(PA.findIndex(p=>p.n===n));Object.assign(ACTS.tco1,{h:i=>hpn(CO[i].pac)});Object.assign(ACTS.tco2,{h:i=>hpn(CO[i].pac)});Object.assign(ACTS.tpg,{h:i=>hpn(PG[i].pac)});
+rin();ic();
+
+</script>
+<script src="/mvida-api-bridge.js"></script>
+</body>
+</html>

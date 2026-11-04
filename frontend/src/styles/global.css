@@ -1,0 +1,31 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+#root,
+.legacy-dashboard-root {
+  display: contents;
+}
+
+.app-loading,
+.app-error {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #0b4a2c;
+  font: 600 14px Inter, sans-serif;
+  text-align: center;
+}
+
+.app-error {
+  color: #b91c1c;
+}
