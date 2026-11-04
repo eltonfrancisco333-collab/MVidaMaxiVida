@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { createApiServer } from './app.js';
+import { CredentialRepository } from './repositories/credentialRepository.js';
 
 test('a API persiste o modelo de dados do dashboard e protege a migração inicial', async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'mvida-api-'));
@@ -202,6 +203,72 @@ test('a API loads legacy duplicate patient identifiers but rejects saving them',
   });
   assert.equal(rejectedSave.status, 400);
   assert.match((await rejectedSave.json()).error, /número de processo/i);
+});
+
+test('an administrator can repair legacy duplicate patient identifiers', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'mvida-repair-patient-identifiers-'));
+  const dataFile = path.join(directory, 'state.json');
+  const credentialsFile = path.join(directory, 'credentials.json');
+  const password = 'palavra-passe-admin-123';
+  await new CredentialRepository(credentialsFile).set('admin@example.org', password, {
+    role: 'Administrador',
+    protectedAdministrator: true
+  });
+  await writeFile(dataFile, JSON.stringify({
+    patients: [{ n: 'Paciente A', p: 'PTC--Infinity' }, { n: 'Paciente B', p: 'PTC--Infinity' }],
+    employees: [],
+    users: [{ n: 'Admin', e: 'admin@example.org', pf: 'Administrador', st: 'Activa' }],
+    appointments: [],
+    payments: [],
+    audit: [],
+    reports: [],
+    services: []
+  }));
+  const server = createApiServer({
+    dataFile,
+    credentialsFile
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  t.after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  const login = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'admin@example.org', password })
+  });
+  assert.equal(login.status, 200);
+  const administrator = await login.json();
+  const stateResponse = await fetch(`${baseUrl}/api/state`, {
+    headers: { Authorization: `Bearer ${administrator.token}` }
+  });
+  assert.equal(stateResponse.status, 200);
+  const legacyState = await stateResponse.json();
+
+  const uncorrectedSave = await fetch(`${baseUrl}/api/state`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${administrator.token}` },
+    body: JSON.stringify(legacyState)
+  });
+  assert.equal(uncorrectedSave.status, 400);
+  assert.match((await uncorrectedSave.json()).error, /número de processo/i);
+
+  const correctedState = structuredClone(legacyState);
+  correctedState.patients[1].p = 'PTC-002';
+  const correctedSave = await fetch(`${baseUrl}/api/state`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${administrator.token}` },
+    body: JSON.stringify(correctedState)
+  });
+  assert.equal(correctedSave.status, 200);
+  const savedState = await correctedSave.json();
+  assert.deepEqual(savedState.patients.map((patient) => patient.p), ['PTC--Infinity', 'PTC-002']);
 });
 
 test('a API aceita a correcção de nomes corrompidos sem desproteger pacientes associados', async (t) => {

@@ -710,7 +710,7 @@ export class StateAccessService {
   }
 
   async saveState(user, submitted, options = {}) {
-    validateState(submitted);
+    validateState(submitted, { allowLegacyPatientIdentifiers: user.pf === 'Administrador' });
     validateServices(submitted.services);
     const { state: current } = await this.stateService.getState();
     if (user.pf === 'Administrador') {

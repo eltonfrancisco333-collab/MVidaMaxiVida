@@ -53,6 +53,7 @@ Os preços de consulta por especialidade e os serviços associados aos profissio
 As permissões são verificadas na API e os dados enviados a cada perfil são limitados:
 
 - **Administrador:** gere todas as áreas e configura utilizadores, médicos, preços e serviços.
+- O administrador pode corrigir o número de processo no formulário de edição do paciente; os números têm de ser únicos. Use o número correcto confirmado nos registos da clínica, sem renumerar pacientes automaticamente.
 - **Recepção:** gere dados de contacto dos pacientes, agenda consultas, regista pagamentos e tratamentos; não recebe alergias, grupo sanguíneo, notas clínicas ou contas de utilizador. Não pode concluir consultas nem anular pagamentos.
 - **Médico:** vê os dados clínicos dos pacientes associados às suas consultas e actualiza apenas o estado e a nota clínica das próprias consultas.
 - **Financeiro:** pode consultar dados necessários para pagamentos, sem notas clínicas, mas não pode registar ou alterar pagamentos nem aceder aos relatórios.
