@@ -73,11 +73,19 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
     }],
     services: [
       { id: 'service-1', name: 'Fisioterapia', price: 25000, active: true },
+      { id: 'service-unused', name: 'Massagem', specialty: 'Dermatologia', price: 18000, active: true },
       { id: 'consultation-clinical', name: 'Consulta', specialty: 'Clínica Geral', price: 52000, active: true }
     ]
   };
   const seedResponse = await request(administrator.token, 'PUT', seeded);
   assert.equal(seedResponse.status, 200);
+  const unusedServiceRemoval = structuredClone(seeded);
+  unusedServiceRemoval.services = unusedServiceRemoval.services.filter((service) => service.id !== 'service-unused');
+  assert.equal((await request(administrator.token, 'PUT', unusedServiceRemoval)).status, 200);
+  const consultationPriceRemoval = structuredClone(unusedServiceRemoval);
+  consultationPriceRemoval.services = consultationPriceRemoval.services.filter((service) => service.id !== 'consultation-clinical');
+  const protectedPriceRemoval = await request(administrator.token, 'PUT', consultationPriceRemoval);
+  assert.equal(protectedPriceRemoval.status, 409);
 
   const temporaryPasswords = {};
   for (const email of ['doctor@example.org', 'reception@example.org', 'finance@example.org']) {

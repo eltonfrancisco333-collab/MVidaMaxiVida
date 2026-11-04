@@ -503,9 +503,14 @@ function validateServices(services) {
 
 function preventDeletingReferencedServices(currentState, nextState) {
   for (const service of currentState.services) {
-    if (!nextState.services.some((candidate) => candidate.id === service.id)
-      && currentState.payments.some((payment) => payment.serviceId === service.id)) {
+    if (nextState.services.some((candidate) => candidate.id === service.id)) continue;
+    if (currentState.payments.some((payment) => payment.serviceId === service.id)) {
       throw new ApiError(409, 'Um serviço usado no histórico de cobranças não pode ser eliminado; desactive-o.');
+    }
+    const specialty = service.specialty || 'Sem especialidade';
+    const isConsultationPrice = service.name.trim().toLowerCase() === 'consulta';
+    if (isConsultationPrice && currentState.appointments.some((appointment) => appointment.esp === specialty)) {
+      throw new ApiError(409, 'Um preço de consulta associado a consultas existentes não pode ser eliminado; desactive-o.');
     }
   }
 }

@@ -41,4 +41,16 @@ test('the services page lets administrators configure prices for every specialty
   assert.match(dashboard, /svc-consultation-add/);
   assert.match(dashboard, /Definir preço/);
   assert.match(dashboard, /Q\('\.svc-consultation-add'\)/);
+  assert.match(dashboard, /svc-delete/);
+  assert.match(dashboard, /serviceIsReferenced/);
+  assert.match(dashboard, /service-page/);
+});
+
+test('the consultations page provides a today view using the Maputo date', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+
+  assert.match(dashboard, /data-c="today"/);
+  assert.match(dashboard, /id="tco3"/);
+  assert.match(dashboard, /crows\(x=>String\(x\.d\|\|''\)\.slice\(0,10\)===TODAY\)/);
+  assert.match(dashboard, /RR\.tco1=RR\.tco2=RR\.tco3=rco/);
 });
