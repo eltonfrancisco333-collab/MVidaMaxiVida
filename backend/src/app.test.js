@@ -273,12 +273,23 @@ test('a primeira utilização começa sem registos e permite criar o administrad
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(tamperedAdminState)
   });
-  assert.equal(tamperAdmin.status, 200);
+  assert.equal(tamperAdmin.status, 409);
+
+  const deactivateAdministratorState = {
+    ...savedState,
+    users: savedState.users.map((user) => ({ ...user, st: 'Desactivada' }))
+  };
+  const deactivateAdministrator = await fetch(`${baseUrl}/api/state`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(deactivateAdministratorState)
+  });
+  assert.equal(deactivateAdministrator.status, 409);
 
   const deleteAdministrator = await fetch(`${baseUrl}/api/state`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ ...tamperedAdminState, users: [] })
+    body: JSON.stringify({ ...savedState, users: [] })
   });
   assert.equal(deleteAdministrator.status, 409);
 

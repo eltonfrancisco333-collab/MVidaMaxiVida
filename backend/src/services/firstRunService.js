@@ -194,8 +194,9 @@ export class FirstRunService {
   async assertProtectedAdministratorRetained(nextState) {
     const email = await this.credentialRepository.getProtectedAdministratorEmail();
     if (!email) return;
-    if (!nextState.users.some((user) => typeof user?.e === 'string' && user.e.toLowerCase() === email)) {
-      throw new ApiError(409, 'A conta principal do administrador não pode ser eliminada.');
+    const administrator = nextState.users.find((user) => typeof user?.e === 'string' && user.e.toLowerCase() === email);
+    if (!administrator || administrator.pf !== 'Administrador' || administrator.st !== 'Activa') {
+      throw new ApiError(409, 'A conta principal deve permanecer activa e com perfil de administrador.');
     }
   }
 

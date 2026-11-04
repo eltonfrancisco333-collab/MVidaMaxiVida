@@ -40,7 +40,7 @@ O ícone de lua/sol na barra superior, ao lado das notificações, alterna entre
 
 ## Consultas, tratamentos e pagamentos
 
-Ao agendar uma consulta, o sistema só permite datas futuras e horários disponíveis no horário do médico; para hoje, apenas horas que ainda não passaram. O preço é definido por especialidade na tela **Serviços** ou usa o preço configurado para o médico. O médico inicia a consulta, regista o diagnóstico e só então a conclui; nesse momento é criada uma única cobrança integral pendente, ligada à consulta. Cancelada, Falta e Concluída são estados finais. Só consultas ainda agendadas podem ser remarcadas.
+Ao agendar uma consulta, o sistema permite horários disponíveis no horário do médico para hoje (desde que ainda não tenham passado) e para datas futuras. O preço é definido por especialidade na tela **Serviços** ou usa o preço configurado para o médico, salvo quando o preço da especialidade estiver explicitamente desactivado. O médico inicia a consulta, regista o diagnóstico e só então a conclui; nesse momento é criada uma única cobrança integral pendente, ligada à consulta. Cancelada, Falta e Concluída são estados finais. Só consultas ainda agendadas podem ser remarcadas.
 
 O cancelamento e a falta não têm taxa; a consulta e os registos financeiros existentes são preservados. Cancelar uma consulta já paga sinaliza que o estorno precisa de ser tratado.
 
