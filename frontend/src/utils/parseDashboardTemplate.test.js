@@ -42,6 +42,7 @@ test('the services page lets administrators configure prices for every specialty
   assert.match(dashboard, /Definir preço/);
   assert.match(dashboard, /Q\('\.svc-consultation-add'\)/);
   assert.match(dashboard, /svc-delete/);
+  assert.match(dashboard, /svc-toggle/);
   assert.match(dashboard, /serviceIsReferenced/);
   assert.match(dashboard, /service-page/);
 });
