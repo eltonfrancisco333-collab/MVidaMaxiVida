@@ -38,6 +38,12 @@ O administrador cria as contas de acesso dos funcionários e recebe uma palavra-
 
 O ícone de lua/sol na barra superior, ao lado das notificações, alterna entre modo claro e escuro. A preferência fica guardada neste navegador.
 
+## Consultas, tratamentos e pagamentos
+
+Cada médico tem um preço base de consulta, configurável no registo ou na edição do funcionário. Ao marcar uma consulta, o preço é preenchido com esse valor e pode ser ajustado para aquela marcação. O sistema cria automaticamente uma cobrança pendente ligada à consulta. Se a consulta for cancelada antes do pagamento, a cobrança pendente passa a anulada.
+
+Tratamentos e outros serviços são registados separadamente na tela Pagamentos, com paciente, descrição e valor próprios. As cobranças de consultas e tratamentos aparecem em listas pendentes distintas; ao registar o pagamento, escolhe-se a forma de pagamento e é possível gerar o recibo. A data da consulta/tratamento é preservada e a data de pagamento fica registada separadamente. O histórico do paciente e os relatórios incluem valores e estados das cobranças.
+
 ## Deploy
 
 O servidor Node.js serve o frontend compilado e a API pela mesma origem. No servidor de deploy, com Node.js 20 ou superior:

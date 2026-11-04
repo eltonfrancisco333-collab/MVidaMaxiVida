@@ -343,6 +343,7 @@
       PG = state.payments;
       AU = state.audit;
       RL = state.reports;
+      migrateAppointmentPayments();
       USER = null;
       renderSavedState();
     }
