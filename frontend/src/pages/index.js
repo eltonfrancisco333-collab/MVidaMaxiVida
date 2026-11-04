@@ -2,6 +2,7 @@ import { inicio } from './Inicio.jsx';
 import { consultas } from './Consultas.jsx';
 import { pacientes } from './Pacientes.jsx';
 import { pagamentos } from './Pagamentos.jsx';
+import { servicos } from './Servicos.jsx';
 import { relatorios } from './Relatorios.jsx';
 import { funcionarios } from './Funcionarios.jsx';
 import { utilizadores } from './Utilizadores.jsx';
@@ -13,6 +14,7 @@ export const screens = [
   consultas,
   pacientes,
   pagamentos,
+  servicos,
   relatorios,
   funcionarios,
   utilizadores,

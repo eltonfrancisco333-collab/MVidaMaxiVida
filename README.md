@@ -40,24 +40,26 @@ O ícone de lua/sol na barra superior, ao lado das notificações, alterna entre
 
 ## Consultas, tratamentos e pagamentos
 
-Ao agendar uma consulta, o sistema cria uma cobrança integral pendente ligada à marcação. Cada médico tem um preço base, configurável no registo ou na edição do funcionário; o valor da consulta pode ser ajustado antes de confirmar a marcação.
+Ao agendar uma consulta, o sistema só permite datas futuras e horários disponíveis no horário do médico; para hoje, apenas horas que ainda não passaram. O preço é definido por especialidade na tela **Serviços** ou usa o preço configurado para o médico. O médico inicia a consulta, regista o diagnóstico e só então a conclui; nesse momento é criada uma única cobrança integral pendente, ligada à consulta. Cancelada, Falta e Concluída são estados finais. Só consultas ainda agendadas podem ser remarcadas.
 
-O cancelamento e a falta não têm taxa: uma cobrança ainda pendente é anulada, sem apagar a consulta nem a cobrança do histórico. A remarcação mantém a mesma consulta e cobrança, regista a data e hora anteriores e actualiza a data do serviço. Uma consulta já paga exige estorno integral antes de ser remarcada. Cancelar uma consulta já paga sinaliza que o estorno precisa de ser tratado; o estorno é registado com motivo.
+O cancelamento e a falta não têm taxa; a consulta e os registos financeiros existentes são preservados. Cancelar uma consulta já paga sinaliza que o estorno precisa de ser tratado.
 
-Pagamentos são integrais, sem saldos ou parcelas. Uma cobrança pendente pode ser paga ou anulada; um pagamento concluído não pode voltar a pendente. Um estorno integral muda o registo para anulado, exige motivo e preserva o histórico e o recibo.
+O pagamento é integral e registado na clínica pela Recepção ou pelo Administrador. Dinheiro não requer dado adicional; Cartão exige os últimos quatro dígitos; Transferência exige o número do comprovativo; e Pagamento móvel exige um número M-Pesa válido (84 ou 85, mais sete dígitos). Ao registar o pagamento, a API cria um número de recibo único e grava o responsável, a data e o IP da requisição. Um pagamento concluído não pode voltar a pendente. Só o Administrador pode anulá-lo; é obrigatório indicar um motivo com pelo menos três letras, e ficam preservados o histórico e o recibo. A Recepção só pode editar observações de pagamentos concluídos.
 
-Tratamentos e serviços usam um catálogo de nomes e preços padrão, gerido pelo administrador na tela Pagamentos. O funcionário financeiro escolhe um serviço e pode ajustar o preço para aquela cobrança. Desactivar um serviço impede novas cobranças, mas mantém os registos anteriores. As listas de pendências, pagamentos concluídos, recibos, histórico do paciente e relatórios distinguem consulta e tratamento; a data do serviço é preservada separadamente da data do pagamento.
+Os preços de consulta por especialidade e os serviços associados aos profissionais estão na tela **Serviços**. O Administrador pode gerir serviços e preços; a Recepção pode consultá-los e registar tratamentos. Os recibos e relatórios podem ser descarregados em PDF pelo botão de download.
 
 ## Perfis e permissões
 
 As permissões são verificadas na API e os dados enviados a cada perfil são limitados:
 
-- **Administrador:** gere todas as áreas e configura utilizadores, médicos, preços e catálogo.
-- **Recepção:** gere dados de contacto dos pacientes e agenda consultas; não recebe alergias, grupo sanguíneo, notas clínicas, pagamentos ou contas de utilizador. Não pode concluir consultas.
+- **Administrador:** gere todas as áreas e configura utilizadores, médicos, preços e serviços.
+- **Recepção:** gere dados de contacto dos pacientes, agenda consultas, regista pagamentos e tratamentos; não recebe alergias, grupo sanguíneo, notas clínicas ou contas de utilizador. Não pode concluir consultas nem anular pagamentos.
 - **Médico:** vê os dados clínicos dos pacientes associados às suas consultas e actualiza apenas o estado e a nota clínica das próprias consultas.
-- **Financeiro:** gere cobranças, pagamentos integrais, estornos e relatórios; recebe apenas os dados de paciente e consulta necessários para cobrança, sem notas clínicas.
+- **Financeiro:** pode consultar dados necessários para pagamentos, sem notas clínicas, mas não pode registar ou alterar pagamentos nem aceder aos relatórios.
 
 Uma palavra-passe temporária tem de ser alterada antes do acesso aos dados. A sessão expira ao fim de oito horas.
+
+O sistema ainda não tem contas nem um portal para pacientes; por isso, notificações directamente ao paciente e avaliações de médicos não estão disponíveis.
 
 ## Deploy
 

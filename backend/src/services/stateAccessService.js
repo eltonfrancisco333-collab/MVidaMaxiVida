@@ -20,6 +20,77 @@ const copy = (value) => structuredClone(value);
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const byName = (records, name) => records.find((record) => record.n === name);
 const patientReferenceFields = ['n', 'p', 't', 'ta', 'e', 'bi', 'nc', 'ca', 'st'];
+const clinicDayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+const consultationPriceFor = (doctor, services) => {
+  const service = services.find((candidate) => candidate.active !== false
+    && candidate.name.trim().toLowerCase() === 'consulta' && candidate.specialty === doctor?.s);
+  return Number(service?.price) || Number(doctor?.p);
+};
+
+function clinicDateTime() {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Maputo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(new Date()).map(({ type, value }) => [type, value]));
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+}
+
+function validateAppointmentSchedule(currentAppointments, nextAppointments, employees, services) {
+  const { date: today, time: now } = clinicDateTime();
+  for (const appointment of nextAppointments) {
+    const previous = currentAppointments.find((candidate) => candidate.id === appointment.id);
+    if (previous && previous.d === appointment.d && previous.h === appointment.h && previous.med === appointment.med) continue;
+
+    const appointmentDate = new Date(`${appointment.d}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(appointment.d || '')
+      || Number.isNaN(appointmentDate.getTime())
+      || appointmentDate.toISOString().slice(0, 10) !== appointment.d
+      || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(appointment.h || '')) {
+      throw new ApiError(400, 'Indique uma data e uma hora válidas para a consulta.');
+    }
+    if (appointment.d < today || (appointment.d === today && appointment.h <= now)) {
+      throw new ApiError(400, 'Só é possível agendar consultas para um horário futuro.');
+    }
+
+    const employee = byName(employees, appointment.med);
+    if (!employee || employee.f !== 'Médico' || employee.st !== 'Activo') {
+      throw new ApiError(400, 'Seleccione um médico activo para a consulta.');
+    }
+    if (!previous) {
+      const expectedPrice = consultationPriceFor(employee, services);
+      if (!Number.isSafeInteger(expectedPrice) || expectedPrice <= 0) {
+        throw new ApiError(400, 'Defina o preço da consulta na tela Serviços ou no cadastro do médico.');
+      }
+      if (Number(appointment.v) !== expectedPrice) {
+        throw new ApiError(400, 'O preço da consulta não corresponde ao preço configurado para a especialidade.');
+      }
+    }
+    const schedule = Array.isArray(employee.h)
+      ? employee.h.find((entry) => Array.isArray(entry) && entry[0] === clinicDayNames[appointmentDate.getUTCDay()])
+      : undefined;
+    if (!schedule || typeof schedule[1] !== 'string' || typeof schedule[2] !== 'string'
+      || !/^\d{2}:\d{2}$/.test(schedule[1]) || !/^\d{2}:\d{2}$/.test(schedule[2])) {
+      throw new ApiError(400, 'O médico não tem horário de atendimento nesse dia.');
+    }
+    const minutes = (time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+    const appointmentMinutes = minutes(appointment.h);
+    const start = minutes(schedule[1]);
+    const end = minutes(schedule[2]);
+    if (appointmentMinutes < start || appointmentMinutes >= end || (appointmentMinutes - start) % 30 !== 0) {
+      throw new ApiError(400, 'Escolha um horário disponível dentro do horário de atendimento do médico.');
+    }
+    if (nextAppointments.some((candidate) => candidate.id !== appointment.id
+      && candidate.med === appointment.med && candidate.d === appointment.d && candidate.h === appointment.h
+      && candidate.st !== 'Cancelada')) {
+      throw new ApiError(409, 'O médico já tem uma consulta nesse horário.');
+    }
+  }
+}
 
 function projectPatient(patient, fields) {
   return Object.fromEntries(fields.filter((field) => Object.hasOwn(patient, field)).map((field) => [field, patient[field]]));
@@ -157,7 +228,7 @@ function mergeReceptionAppointments(currentAppointments, submittedAppointments, 
         throw new ApiError(400, 'Uma nova consulta deve começar com o estado Agendada.');
       }
       const doctor = byName(state.employees, appointment.med);
-      appointment.v = Number(doctor?.p) || 30000;
+      appointment.v = consultationPriceFor(doctor, state.services);
       appointment.mo = '';
       appointment.clinicalNote = '';
       appointment.rescheduleHistory = [];
@@ -166,6 +237,7 @@ function mergeReceptionAppointments(currentAppointments, submittedAppointments, 
   if (currentAppointments.some((appointment) => !submittedAppointments.some((next) => next.id === appointment.id))) {
     throw new ApiError(409, 'As consultas não podem ser eliminadas; cancele ou marque a falta para preservar o histórico.');
   }
+  validateAppointmentSchedule(currentAppointments, submittedAppointments, state.employees, state.services);
   return submittedAppointments;
 }
 
@@ -397,7 +469,7 @@ function enforceFinancialLedger(currentPayments, submittedPayments, currentState
       throw new ApiError(403, 'Só é possível criar cobranças de tratamento ou consulta pendentes.');
     }
     const service = nextState.services.find((item) => item.id === payment.serviceId && item.active !== false);
-    if (!service) throw new ApiError(400, 'Seleccione um serviço activo do catálogo.');
+    if (!service) throw new ApiError(400, 'Seleccione um serviço activo na lista de serviços.');
     if (!nextState.patients.some((patient) => patient.n === payment.pac)) {
       throw new ApiError(400, 'Seleccione um paciente válido para a cobrança.');
     }
@@ -418,6 +490,10 @@ function validateServices(services) {
     }
     if (!Number.isSafeInteger(service.price) || service.price <= 0) {
       throw new ApiError(400, 'O preço do serviço deve ser um número inteiro positivo.');
+    }
+    if (service.specialty !== undefined
+      && (typeof service.specialty !== 'string' || !service.specialty.trim() || service.specialty.length > 100)) {
+      throw new ApiError(400, 'Indique uma especialidade válida para o serviço.');
     }
     if (service.active !== undefined && typeof service.active !== 'boolean') {
       throw new ApiError(400, 'O estado do serviço é inválido.');
@@ -513,7 +589,7 @@ function applyAppointmentBillingRules(currentState, nextState) {
       if (appointment.st !== 'Agendada') {
         throw new ApiError(400, 'Uma nova consulta deve começar no estado Agendada.');
       }
-      appointment.v = Number(employee.p) || 30000;
+      appointment.v = consultationPriceFor(employee, nextState.services);
     } else {
       appointment.v = previous.v;
       const allowedTransitions = {
@@ -609,6 +685,7 @@ export class StateAccessService {
     const { state: current } = await this.stateService.getState();
     if (user.pf === 'Administrador') {
       const next = copy(submitted);
+      validateAppointmentSchedule(current.appointments, next.appointments, next.employees, next.services);
       for (const patient of current.patients) {
         if (next.patients.some((candidate) => candidate.p === patient.p)) continue;
         const hasActivity = current.appointments.some((appointment) => appointment.pac === patient.n)

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const projectDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const bridgePath = path.join(projectDirectory, 'frontend', 'public', 'mvida-api-bridge.js');
+const dashboardPath = path.join(projectDirectory, 'frontend', 'public', 'dashboard.html');
 
 test('the login flow preserves the authenticated user while loading authorized state', async () => {
   const bridge = await readFile(bridgePath, 'utf8');
@@ -21,4 +22,14 @@ test('the login flow preserves the authenticated user while loading authorized s
   assert.match(loginHandler, /await loadAuthenticatedState\(\);[\s\S]*?entrar\(result\.user\);/);
   assert.doesNotMatch(loginHandler, /entrar\(USER\);/);
   assert.doesNotMatch(stateLoader, /\bUSER\s*=\s*null\b/);
+});
+
+test('the dashboard follows the completed-consultation payment workflow', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+
+  assert.match(dashboard, /appointment\.st!=='Concluída'[\s\S]{0,40}return payment/);
+  assert.match(dashboard, /Diagnóstico<textarea/);
+  assert.match(dashboard, /paymentDetailsValid/);
+  assert.match(dashboard, /Só a recepção ou o administrador podem registar pagamentos/);
+  assert.match(dashboard, /receiptNumber\|\|/);
 });

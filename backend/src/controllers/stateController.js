@@ -25,7 +25,10 @@ export function createStateController(stateAccessService, firstRunService, { all
       }
       const saved = allowUnauthenticatedState
         ? await stateAccessService.stateService.saveState(state, { migration: request.method === 'POST' })
-        : await stateAccessService.saveState(user, state, { migration: request.method === 'POST' });
+        : await stateAccessService.saveState(user, state, {
+          migration: request.method === 'POST',
+          ip: request.headers['x-forwarded-for']?.split(',')[0].trim() || request.socket.remoteAddress
+        });
       const visible = user ? (await stateAccessService.getState(user)).state : saved;
       return sendJson(response, 200, visible);
     }
