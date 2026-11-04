@@ -62,6 +62,29 @@ test('account menu offers password change and logout with a five-character minim
   assert.match(dashboard, /canReset=ADM\(\)&&x\.e\.toLowerCase\(\)!==USER\.e\.toLowerCase\(\)/);
 });
 
+test('the login uses a consistent blue palette, visible labels, and responsive structure', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const bridge = await readFile(bridgePath, 'utf8');
+
+  assert.match(dashboard, /--g:#246b9e/);
+  assert.match(dashboard, /--bg:#0b1522;--card:#142337/);
+  assert.match(dashboard, /class="login-highlights"/);
+  assert.match(bridge, /title\.textContent = 'Aceder à sua conta'/);
+  assert.match(dashboard, /data-login-label="email">E-mail/);
+  assert.match(dashboard, /data-login-label="password">Palavra-passe/);
+  assert.match(dashboard, /@media\(max-width:820px\)\{\.lgx\{grid-template-columns:minmax\(0,1fr\)/);
+  assert.match(bridge, /emailLabel\.textContent = 'E-mail do administrador'/);
+  assert.match(bridge, /form\.insertBefore\(nameField, email\.closest\('\.login-field'\)/);
+});
+
+test('empty consultation lists do not show table headers without appointments', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+
+  assert.match(dashboard, /\.consultation-list:empty\{display:none!important\}/);
+  assert.match(dashboard, /function tbl\(id,heads,rows,N,hideEmpty\)\{N=N\|\|6;if\(hideEmpty&&!rows\.length\)\{PG0\[id\]=0;\$\(id\)\.innerHTML='';return\}/);
+  assert.match(dashboard, /tbl\('tco3',CH,crows\([\s\S]*?\),6,true\)/);
+});
+
 test('the services page lets administrators configure prices for every specialty', async () => {
   const dashboard = await readFile(dashboardPath, 'utf8');
 

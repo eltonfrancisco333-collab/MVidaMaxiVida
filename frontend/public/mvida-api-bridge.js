@@ -10,7 +10,7 @@
     placeItems: 'center',
     padding: '24px',
     background: '#f6f8fb',
-    color: '#0b4a2c',
+    color: '#123353',
     font: '600 14px Inter, sans-serif',
     textAlign: 'center'
   });
@@ -210,6 +210,8 @@
     const title = form.querySelector('h2');
     const email = $('li');
     const password = $('lp');
+    const emailLabel = form.querySelector('[data-login-label="email"]');
+    const passwordLabel = form.querySelector('[data-login-label="password"]');
     const error = $('ler');
     const submit = form.querySelector('[type="submit"]');
     const helpText = form.querySelector('.ldm');
@@ -242,7 +244,9 @@
       setupMode = false;
       nameField.remove();
       confirmField.remove();
-      title.textContent = 'Entrar no Sistema';
+      title.textContent = 'Aceder à sua conta';
+      emailLabel.textContent = 'E-mail';
+      passwordLabel.textContent = 'Palavra-passe';
       email.type = 'email';
       email.placeholder = 'E-mail';
       email.setAttribute('aria-label', 'E-mail');
@@ -259,6 +263,8 @@
     function showSetup() {
       setupMode = true;
       title.textContent = 'Configurar Sistema';
+      emailLabel.textContent = 'E-mail do administrador';
+      passwordLabel.textContent = 'Palavra-passe (mínimo 5 caracteres)';
       email.type = 'email';
       email.placeholder = 'E-mail do administrador';
       email.setAttribute('aria-label', 'E-mail do administrador');
@@ -269,8 +275,9 @@
       forgotPassword.style.display = 'none';
       submit.textContent = 'Criar Administrador';
       helpText.textContent = 'Primeiro acesso: crie a conta de administrador para começar.';
-      form.insertBefore(nameField, email.closest('.lin'));
-      form.insertBefore(confirmField, password.closest('.lin').nextSibling);
+      form.insertBefore(nameField, email.closest('.login-field') || email.closest('.lin'));
+      const passwordField = password.closest('.login-field') || password.closest('.lin');
+      form.insertBefore(confirmField, passwordField.nextSibling);
       ic();
     }
 
