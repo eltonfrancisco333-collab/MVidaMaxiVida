@@ -170,7 +170,7 @@
   }
 
   async function saveState() {
-    if (!authToken) return;
+    if (!authToken || MUST_CHANGE_PASSWORD) return;
     const body = JSON.stringify(stateSnapshot());
     if (body === lastSaved) return;
     const operation = saveQueue.catch(() => {}).then(async () => {
@@ -240,6 +240,7 @@
       title.textContent = 'Entrar no Sistema';
       email.type = 'email';
       email.placeholder = 'E-mail';
+      email.setAttribute('aria-label', 'E-mail');
       email.autocomplete = 'username';
       password.placeholder = 'Palavra-passe';
       password.autocomplete = 'current-password';
@@ -255,6 +256,7 @@
       title.textContent = 'Configurar Sistema';
       email.type = 'email';
       email.placeholder = 'E-mail do administrador';
+      email.setAttribute('aria-label', 'E-mail do administrador');
       email.autocomplete = 'email';
       password.placeholder = 'Palavra-passe (mínimo 10 caracteres)';
       password.autocomplete = 'new-password';
@@ -331,7 +333,7 @@
       window.mvidaAuth.setSession(result);
       USER = result.user;
       if (result.mustChangePassword) {
-        entrar(USER);
+        openPasswordChange(true);
         return;
       }
       try {
