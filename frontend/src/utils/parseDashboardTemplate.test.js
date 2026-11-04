@@ -44,6 +44,24 @@ test('the dashboard displays automatic patient process number generation', async
   assert.match(bridge, /savedBody = JSON\.stringify\(stateSnapshot\(\)\)/);
 });
 
+test('the calendar Today button opens the current Maputo day', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+
+  assert.match(dashboard, /id="ch" type="button">Hoje/);
+  assert.match(dashboard, /cur=clinicClock\(\)\.date;cm='dia';rcal\(\)/);
+});
+
+test('account menu offers password change and logout with a five-character minimum', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+
+  assert.match(dashboard, /id="account-change-password"[^>]*>[\s\S]*?Alterar palavra-passe/);
+  assert.match(dashboard, /id="account-logout"[^>]*>[\s\S]*?Terminar sessão/);
+  assert.match(dashboard, /openPasswordChange\(false\)/);
+  assert.match(dashboard, /Nova palavra-passe \(mínimo 5 caracteres\)/i);
+  assert.match(dashboard, /newPassword\.length<5/);
+  assert.match(dashboard, /canReset=ADM\(\)&&x\.e\.toLowerCase\(\)!==USER\.e\.toLowerCase\(\)/);
+});
+
 test('the services page lets administrators configure prices for every specialty', async () => {
   const dashboard = await readFile(dashboardPath, 'utf8');
 

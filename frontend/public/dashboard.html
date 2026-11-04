@@ -166,6 +166,7 @@ button:focus-visible,a:focus-visible{outline:3px solid color-mix(in srgb,var(--g
 .theme-toggle{background:var(--card);border:1px solid var(--bd);color:var(--mu);width:40px;height:40px;border-radius:12px;display:grid;place-items:center;cursor:pointer;flex:none;box-shadow:var(--sh)}
 .theme-toggle:hover{color:var(--g);background:var(--bg)}
 .temporary-password{display:block;padding:12px;border:1px dashed var(--bd);border-radius:10px;background:var(--bg);font:600 16px ui-monospace,monospace;overflow-wrap:anywhere;user-select:all}
+.account-menu{position:fixed;right:24px;top:68px;width:min(240px,calc(100vw - 24px));padding:6px;background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 12px 36px rgba(20,30,50,.16);z-index:35}.account-menu.off{display:none}.account-menu button{display:flex;width:100%;align-items:center;gap:10px;padding:10px 12px;border:0;border-radius:8px;background:transparent;color:var(--tx);text-align:left;cursor:pointer}.account-menu button:hover,.account-menu button:focus-visible{background:var(--bg);outline:2px solid var(--g);outline-offset:-2px}.account-menu button .lucide{width:17px;height:17px;color:var(--mu)}
 </style>
 </head>
 <body>
@@ -196,7 +197,11 @@ button:focus-visible,a:focus-visible{outline:3px solid color-mix(in srgb,var(--g
     <div class="sp"></div>
     <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Activar modo escuro" title="Activar modo escuro"><i data-lucide="moon"></i></button>
     <button class="bell" aria-label="Notificações"><i data-lucide="bell"></i><b id="nd"></b></button>
-    <div class="user" title="Alterar palavra-passe" role="button" tabindex="0" aria-label="Alterar palavra-passe"><div class="av">MV</div><div><b>MVida</b><small>Sistema</small></div><i data-lucide="chevron-down"></i></div>
+    <div class="user" title="Opções da conta" role="button" tabindex="0" aria-label="Abrir opções da conta" aria-haspopup="menu" aria-expanded="false"><div class="av">MV</div><div><b>MVida</b><small>Sistema</small></div><i data-lucide="chevron-down"></i></div>
+    <div class="account-menu off" id="account-menu" role="menu" aria-label="Opções da conta">
+      <button type="button" id="account-change-password" role="menuitem"><i data-lucide="key-round"></i>Alterar palavra-passe</button>
+      <button type="button" id="account-logout" role="menuitem"><i data-lucide="log-out"></i>Terminar sessão</button>
+    </div>
   </header>
 
 
@@ -210,7 +215,7 @@ button:focus-visible,a:focus-visible{outline:3px solid color-mix(in srgb,var(--g
   <div class="tit"><h1>Gestão de Consultas</h1><button class="btn" id="bnc"><i data-lucide="plus"></i>Nova Consulta</button></div>
   <div class="tabs" id="tbc"><button data-c="cal">Calendário</button><button class="on" data-c="today">Hoje</button><button data-c="lis">Lista</button><button data-c="age">Agendamentos</button></div>
   <div class="card" id="pcal"><div class="cg"><div class="esp" id="esp"></div><div>
-    <div class="tb"><button class="ib" id="cp" aria-label="Anterior"><i data-lucide="chevron-left"></i></button><button class="ib" id="cn" aria-label="Seguinte"><i data-lucide="chevron-right"></i></button><b id="ct"></b><button class="sg" id="ch">Hoje</button><span id="cmodes" class="els" style="gap:8px"><button class="sg on" data-m="mes">Mês</button><button class="sg" data-m="sem">Semana</button><button class="sg" data-m="dia">Dia</button></span></div>
+    <div class="tb"><button class="ib" id="cp" aria-label="Anterior"><i data-lucide="chevron-left"></i></button><button class="ib" id="cn" aria-label="Seguinte"><i data-lucide="chevron-right"></i></button><b id="ct"></b>    <button class="sg" id="ch" type="button">Hoje</button><span id="cmodes" class="els" style="gap:8px"><button class="sg on" data-m="mes">Mês</button><button class="sg" data-m="sem">Semana</button><button class="sg" data-m="dia">Dia</button></span></div>
     <div id="cbody"></div></div></div></div>
   <div class="card off" id="tco1"></div><div class="card" id="tco3"></div><div class="card off" id="tco2"></div>
 </section>
@@ -649,12 +654,12 @@ Q('#tbc button').forEach(b=>b.onclick=()=>{Q('#tbc button').forEach(x=>x.classLi
 Q('#tbp button').forEach(b=>b.onclick=()=>{pt=b.dataset.p;PG0.tpg=0;rpg()});
 Q('#cmodes .sg').forEach(b=>b.onclick=()=>{cm=b.dataset.m;rcal()});
 const step=k=>{cur=cm==='mes'?iso(new Date(Date.UTC(+cur.slice(0,4),+cur.slice(5,7)-1+k,1))):add(cur,k*(cm==='sem'?7:1));rcal()};
-$('cp').onclick=()=>step(-1);$('cn').onclick=()=>step(1);$('ch').onclick=()=>{cur=TODAY;rcal()};
+$('cp').onclick=()=>step(-1);$('cn').onclick=()=>step(1);$('ch').addEventListener('click',event=>{event.preventDefault();cur=clinicClock().date;cm='dia';rcal()});
 $('esp').innerHTML='<h3>Especialidades</h3>'+ESPS.slice(0,5).map(e=>`<label><input type="checkbox" checked data-e="${e}">${e}</label>`).join('');
 Q('#esp input').forEach(c=>c.onchange=()=>{ESF[c.dataset.e]=c.checked;rco()});
 const PERMS={Administrador:['Início','Consultas','Pacientes','Pagamentos','Serviços','Relatórios','Funcionários','Utilizadores','Auditoria','Sobre'],Médico:['Início','Consultas','Sobre'],Recepção:['Início','Consultas','Pacientes','Pagamentos','Serviços','Sobre'],Financeiro:['Início','Pagamentos','Sobre']};
 const lerr=m=>{$('ler').textContent=m;$('ler').style.display=m?'':'none'};
-function openPasswordChange(required){form(required?'Alterar palavra-passe':'Alterar a minha palavra-passe',`<div class="fg">${fi('Palavra-passe actual','','password','current-password')}${fi('Nova palavra-passe (mínimo 10 caracteres)','','password','new-password')}${fi('Confirmar nova palavra-passe','','password','confirm-password')}</div>`,async()=>{const currentPassword=$('current-password').value,newPassword=$('new-password').value;if(newPassword.length<10){toast('A nova palavra-passe deve ter pelo menos 10 caracteres.');return false}if(newPassword!==$('confirm-password').value){toast('As novas palavras-passe não coincidem.');return false}const updatedSession=await window.mvidaAuth.changePassword(currentPassword,newPassword);MUST_CHANGE_PASSWORD=false;USER=updatedSession.user;entrar(USER);lg('Alteração de palavra-passe','Utilizador alterou a sua palavra-passe','Informação');toast('Palavra-passe alterada com sucesso.');return true},'Guardar nova palavra-passe');if(required){$('gf').querySelector('.gc')?.remove();$('gx').style.display='none'}}
+function openPasswordChange(required){form(required?'Alterar palavra-passe':'Alterar a minha palavra-passe',`<div class="fg">${fi('Palavra-passe actual','','password','current-password')}${fi('Nova palavra-passe (mínimo 5 caracteres)','','password','new-password')}${fi('Confirmar nova palavra-passe','','password','confirm-password')}</div>`,async()=>{const currentPassword=$('current-password').value,newPassword=$('new-password').value;if(newPassword.length<5){toast('A nova palavra-passe deve ter pelo menos 5 caracteres.');return false}if(newPassword!==$('confirm-password').value){toast('As novas palavras-passe não coincidem.');return false}const updatedSession=await window.mvidaAuth.changePassword(currentPassword,newPassword);MUST_CHANGE_PASSWORD=false;USER=updatedSession.user;entrar(USER);lg('Alteração de palavra-passe','Utilizador alterou a sua palavra-passe','Informação');toast('Palavra-passe alterada com sucesso.');return true},'Guardar nova palavra-passe');if(required){$('gf').querySelector('.gc')?.remove();$('gx').style.display='none'}}
 function entrar(u){
   USER=u;
   const account=US.find(x=>x?.e?.toLowerCase()===u.e.toLowerCase());
@@ -676,8 +681,14 @@ function entrar(u){
 $('lf').onsubmit=e=>{e.preventDefault();const id=V('li').toLowerCase(),pw=$('lp').value;if(!id||!pw){lerr('Indique o e-mail e a palavra-passe.');return}const u=US.find(x=>x.e.toLowerCase()===id||x.n.toLowerCase()===id);if(!u){lerr('E-mail ou palavra-passe incorrectos.');return}if(u.st!=='Activa'){lerr('Esta conta está desactivada. Contacte o administrador.');return}lerr('');entrar(u)};
 $('lse').onclick=()=>{const p=$('lp'),h=p.type==='password';p.type=h?'text':'password';$('lse').innerHTML=`<i data-lucide="${h?'eye-off':'eye'}"></i>`;ic()};
 $('lfg').onclick=()=>M('Recuperar palavra-passe','<p style="margin:0;color:var(--mu);line-height:1.55">Para repor a sua palavra-passe, contacte a recepção da clínica ou o administrador do sistema. Receberá uma palavra-passe temporária, que deverá alterar no primeiro acesso.</p>','<button class="btn gc">Entendi</button>');
-Q('.user').forEach(a=>a.onclick=()=>openPasswordChange(false));
-Q('.user').forEach(a=>a.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openPasswordChange(false)}});
+const accountMenu=$('account-menu');
+function toggleAccountMenu(open){const show=typeof open==='boolean'?open:accountMenu.classList.contains('off');accountMenu.classList.toggle('off',!show);Q('.user').forEach(button=>button.setAttribute('aria-expanded',String(show)));if(show)Q('#account-menu button')[0]?.focus()}
+Q('.user').forEach(button=>button.onclick=()=>toggleAccountMenu());
+Q('.user').forEach(button=>button.onkeydown=event=>{if(event.key==='Enter'||event.key===' '||event.key==='ArrowDown'){event.preventDefault();toggleAccountMenu(true)}});
+$('account-change-password').onclick=()=>{toggleAccountMenu(false);openPasswordChange(false)};
+$('account-logout').onclick=()=>{toggleAccountMenu(false);Q('.sair')[0]?.click()};
+document.addEventListener('click',event=>{if(!event.target.closest('.user,#account-menu'))toggleAccountMenu(false)});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!accountMenu.classList.contains('off')){toggleAccountMenu(false);Q('.user')[0]?.focus()}});
 function syncThemeButton(){const dark=document.documentElement.dataset.theme==='dark',label=dark?'Activar modo claro':'Activar modo escuro';$('theme-toggle').innerHTML=`<i data-lucide="${dark?'moon':'sun'}"></i>`;$('theme-toggle').setAttribute('aria-label',label);$('theme-toggle').title=label;$('theme-toggle').setAttribute('aria-pressed',String(dark));ic()}
 $('theme-toggle').onclick=()=>{const dark=document.documentElement.dataset.theme!=='dark';document.documentElement.dataset.theme=dark?'dark':'light';try{localStorage.setItem('mvida-theme',dark?'dark':'light')}catch(error){console.warn('Não foi possível guardar a preferência de tema.',error)}syncThemeButton()};
 syncThemeButton();

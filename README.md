@@ -32,7 +32,7 @@ npm run dev
 
 Abra `http://localhost:3000`. Para executar apenas a API, use `npm run server`.
 
-Na primeira abertura, o sistema pede o nome, o e-mail e uma palavra-passe de administrador (mínimo 10 caracteres). Não existem pacientes, funcionários, consultas, pagamentos ou relatórios pré-carregados. Depois de criar a conta, registe os funcionários e os pacientes para começar a utilizar as restantes áreas. O conteúdo do dashboard fica oculto até à autenticação.
+Na primeira abertura, o sistema pede o nome, o e-mail e uma palavra-passe de administrador (mínimo 5 caracteres; recomenda-se uma frase-passe mais longa). Não existem pacientes, funcionários, consultas, pagamentos ou relatórios pré-carregados. Depois de criar a conta, registe os funcionários e os pacientes para começar a utilizar as restantes áreas. O conteúdo do dashboard fica oculto até à autenticação.
 
 O administrador cria as contas de acesso dos funcionários e recebe uma palavra-passe temporária para entregar por um canal seguro. A conta principal criada na configuração inicial não pode ser eliminada nem desactivada. No primeiro acesso, cada utilizador tem de escolher uma palavra-passe própria. Utilizadores autenticados podem alterar a sua palavra-passe no menu do perfil; para recuperar o acesso, devem contactar um administrador, que pode emitir uma nova palavra-passe temporária. As sessões expiram após oito horas. Não é necessário e-mail nem pergunta de segurança.
 
@@ -58,7 +58,7 @@ As permissões são verificadas na API e os dados enviados a cada perfil são li
 - **Médico:** vê os dados clínicos dos pacientes associados às suas consultas e actualiza apenas o estado e a nota clínica das próprias consultas.
 - **Financeiro:** pode consultar dados necessários para pagamentos, sem notas clínicas, mas não pode registar ou alterar pagamentos nem aceder aos relatórios.
 
-Uma palavra-passe temporária tem de ser alterada antes do acesso aos dados. A sessão expira ao fim de oito horas.
+Uma palavra-passe temporária tem de ser alterada antes do acesso aos dados. Para alterar a palavra-passe, o utilizador abre o menu no seu nome e confirma a palavra-passe actual; a nova palavra-passe deve ter pelo menos 5 caracteres. Um Administrador pode repor a palavra-passe de outro utilizador: o sistema mostra uma palavra-passe temporária uma única vez, termina as sessões anteriores e exige que a pessoa escolha uma palavra-passe nova no próximo acesso. A conta de um Administrador também pode ser reposta por outro Administrador. A sessão expira ao fim de oito horas.
 
 O sistema ainda não tem contas nem um portal para pacientes; por isso, notificações directamente ao paciente e avaliações de médicos não estão disponíveis.
 

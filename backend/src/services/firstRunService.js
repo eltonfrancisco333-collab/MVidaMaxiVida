@@ -23,8 +23,8 @@ export class FirstRunService {
 
       if (name.length < 2 || name.length > 120) throw new ApiError(400, 'Indique o nome do administrador.');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, 'Indique um e-mail válido.');
-      if (password.length < 10 || password.length > 200) {
-        throw new ApiError(400, 'A palavra-passe deve ter entre 10 e 200 caracteres.');
+      if (password.length < 5 || password.length > 200) {
+        throw new ApiError(400, 'A palavra-passe deve ter entre 5 e 200 caracteres.');
       }
 
       const { state } = await this.stateService.getState();
@@ -142,8 +142,8 @@ export class FirstRunService {
     const user = await this.getSession(token);
     const currentPassword = typeof input?.currentPassword === 'string' ? input.currentPassword : '';
     const newPassword = typeof input?.newPassword === 'string' ? input.newPassword : '';
-    if (newPassword.length < 10 || newPassword.length > 200) {
-      throw new ApiError(400, 'A nova palavra-passe deve ter entre 10 e 200 caracteres.');
+    if (newPassword.length < 5 || newPassword.length > 200) {
+      throw new ApiError(400, 'A nova palavra-passe deve ter entre 5 e 200 caracteres.');
     }
     if (currentPassword === newPassword) {
       throw new ApiError(400, 'A nova palavra-passe deve ser diferente da actual.');

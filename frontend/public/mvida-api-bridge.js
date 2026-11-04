@@ -263,7 +263,7 @@
       email.placeholder = 'E-mail do administrador';
       email.setAttribute('aria-label', 'E-mail do administrador');
       email.autocomplete = 'email';
-      password.placeholder = 'Palavra-passe (mínimo 10 caracteres)';
+      password.placeholder = 'Palavra-passe (mínimo 5 caracteres)';
       password.autocomplete = 'new-password';
       remember.style.display = 'none';
       forgotPassword.style.display = 'none';
@@ -287,8 +287,8 @@
         const name = nameInput.value.trim();
         const address = email.value.trim();
         const secret = password.value;
-        if (name.length < 2 || !address || secret.length < 10) {
-          setFormError('Preencha o nome, o e-mail e uma palavra-passe com pelo menos 10 caracteres.');
+        if (name.length < 2 || !address || secret.length < 5) {
+          setFormError('Preencha o nome, o e-mail e uma palavra-passe com pelo menos 5 caracteres.');
           return;
         }
         if (secret !== confirmInput.value) {

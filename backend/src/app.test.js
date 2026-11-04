@@ -129,6 +129,93 @@ test('a API persiste o modelo de dados do dashboard e protege a migração inici
   assert.equal(afterConcurrentSaves.patients.some((patient) => patient.p === 'PTC-B'), false);
 });
 
+test('password policy allows five characters and another administrator can reset the protected admin', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'mvida-password-policy-'));
+  const server = createApiServer({
+    dataFile: path.join(directory, 'state.json'),
+    credentialsFile: path.join(directory, 'credentials.json')
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  t.after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  const setup = async (password) => fetch(`${baseUrl}/api/setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'Admin Principal', email: 'admin@example.org', password })
+  });
+  assert.equal((await setup('1234')).status, 400);
+  const setupResponse = await setup('12345');
+  assert.equal(setupResponse.status, 201);
+  const primaryAdmin = await setupResponse.json();
+  const auth = (token) => ({ Authorization: `Bearer ${token}` });
+  const addAdminState = await (await fetch(`${baseUrl}/api/state`, {
+    headers: auth(primaryAdmin.token)
+  })).json();
+  addAdminState.users.push({
+    n: 'Segundo Administrador', e: 'admin2@example.org', pf: 'Administrador', st: 'Activa'
+  });
+  const addAdminResponse = await fetch(`${baseUrl}/api/state`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...auth(primaryAdmin.token) },
+    body: JSON.stringify(addAdminState)
+  });
+  assert.equal(addAdminResponse.status, 200);
+  const initialAdminReset = await fetch(`${baseUrl}/api/users/password/reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...auth(primaryAdmin.token) },
+    body: JSON.stringify({ email: 'admin2@example.org' })
+  });
+  assert.equal(initialAdminReset.status, 200);
+  const secondTemporaryPassword = (await initialAdminReset.json()).temporaryPassword;
+  const secondLogin = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'admin2@example.org', password: secondTemporaryPassword })
+  });
+  assert.equal(secondLogin.status, 200);
+  const secondAdmin = await secondLogin.json();
+  assert.equal(secondAdmin.mustChangePassword, true);
+
+  const tooShortChange = await fetch(`${baseUrl}/api/auth/change-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...auth(secondAdmin.token) },
+    body: JSON.stringify({ currentPassword: secondTemporaryPassword, newPassword: '1234' })
+  });
+  assert.equal(tooShortChange.status, 400);
+  const minimumLengthChange = await fetch(`${baseUrl}/api/auth/change-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...auth(secondAdmin.token) },
+    body: JSON.stringify({ currentPassword: secondTemporaryPassword, newPassword: '12345' })
+  });
+  assert.equal(minimumLengthChange.status, 200);
+  const authenticatedSecondAdmin = await minimumLengthChange.json();
+  assert.equal(authenticatedSecondAdmin.mustChangePassword, false);
+
+  const resetPrimaryAdmin = await fetch(`${baseUrl}/api/users/password/reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...auth(authenticatedSecondAdmin.token) },
+    body: JSON.stringify({ email: 'admin@example.org' })
+  });
+  assert.equal(resetPrimaryAdmin.status, 200);
+  const primaryTemporaryPassword = (await resetPrimaryAdmin.json()).temporaryPassword;
+  const revokedSession = await fetch(`${baseUrl}/api/state`, { headers: auth(primaryAdmin.token) });
+  assert.equal(revokedSession.status, 401);
+  const primaryTemporaryLogin = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'admin@example.org', password: primaryTemporaryPassword })
+  });
+  assert.equal(primaryTemporaryLogin.status, 200);
+  assert.equal((await primaryTemporaryLogin.json()).mustChangePassword, true);
+});
+
 test('a API migra IDs ausentes ou inválidos sem criar colisões', async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'mvida-legacy-ids-'));
   const dataFile = path.join(directory, 'state.json');
@@ -387,7 +474,7 @@ test('a primeira utilização começa sem registos e permite criar o administrad
   const invalidSetup = await fetch(`${baseUrl}/api/setup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: 'Admin', email: 'admin@example.org', password: 'short' })
+    body: JSON.stringify({ name: 'Admin', email: 'admin@example.org', password: '1234' })
   });
   assert.equal(invalidSetup.status, 400);
 
