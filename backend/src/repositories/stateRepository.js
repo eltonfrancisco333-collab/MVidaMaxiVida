@@ -40,7 +40,9 @@ export class StateRepository {
           paymentIds.add(Number(payment.id));
         }
       }
-      validateState(saved);
+      if (saved && typeof saved === 'object' && !Array.isArray(saved)
+        && (!Number.isSafeInteger(saved._revision) || saved._revision < 0)) saved._revision = 0;
+      validateState(saved, { allowLegacyPatientIdentifiers: true });
       this.value = saved;
       this.persisted = true;
     } catch (error) {
@@ -61,14 +63,19 @@ export class StateRepository {
         throw new ApiError(409, 'O servidor já tem dados guardados; a migração foi cancelada.');
       }
 
+      if (!migration && this.persisted && nextState._revision !== this.value._revision) {
+        throw new ApiError(409, 'Os dados foram alterados por outro utilizador. Actualize a página antes de guardar novamente.');
+      }
+
       validateState(nextState);
       if (!migration && this.persisted) preventDeletingLinkedRecords(this.value, nextState);
 
       await mkdir(path.dirname(this.dataFile), { recursive: true });
       const temporaryFile = `${this.dataFile}.${process.pid}.tmp`;
-      await writeFile(temporaryFile, JSON.stringify(nextState, null, 2), 'utf8');
+      const savedState = { ...nextState, _revision: (this.value._revision || 0) + 1 };
+      await writeFile(temporaryFile, JSON.stringify(savedState, null, 2), 'utf8');
       await rename(temporaryFile, this.dataFile);
-      this.value = structuredClone(nextState);
+      this.value = structuredClone(savedState);
       this.persisted = true;
       return structuredClone(this.value);
     });

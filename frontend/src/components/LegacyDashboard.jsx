@@ -2,9 +2,25 @@ import React, { useEffect, useState } from 'react';
 import { fetchDashboardTemplate } from '../services/api.js';
 import { parseDashboardTemplate } from '../utils/parseDashboardTemplate.js';
 
+let pdfLibrary;
+
 export default function LegacyDashboard() {
   const [template, setTemplate] = useState(null);
   const [error, setError] = useState('');
+  window.mvidaPdfLoader = () => {
+    if (!pdfLibrary) {
+      pdfLibrary = import('jspdf')
+        .then(({ jsPDF }) => {
+          window.jspdf = { jsPDF };
+          return jsPDF;
+        })
+        .catch((loadError) => {
+          pdfLibrary = undefined;
+          throw loadError;
+        });
+    }
+    return pdfLibrary;
+  };
 
   useEffect(() => {
     let active = true;
@@ -31,7 +47,12 @@ export default function LegacyDashboard() {
         script.src = source;
         script.async = false;
         script.onload = resolve;
-        script.onerror = () => reject(new Error(`Não foi possível carregar a biblioteca ${source}.`));
+        script.onerror = () => {
+          const message = `Não foi possível carregar a biblioteca opcional ${source}.`;
+          console.error(message);
+          if (source.startsWith('https://')) resolve();
+          else reject(new Error(message));
+        };
       } else {
         script.textContent = content;
         resolve();

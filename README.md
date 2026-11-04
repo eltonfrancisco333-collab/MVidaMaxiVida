@@ -61,6 +61,10 @@ Uma palavra-passe temporária tem de ser alterada antes do acesso aos dados. A s
 
 O sistema ainda não tem contas nem um portal para pacientes; por isso, notificações directamente ao paciente e avaliações de médicos não estão disponíveis.
 
+O número de processo de cada paciente tem de ser único. Dados legados com números repetidos continuam a ser carregados para não impedir o arranque, mas as gravações são recusadas até um administrador corrigir os duplicados. As alterações simultâneas usam uma revisão do estado; se outro utilizador guardar primeiro, a gravação antiga é recusada e a página deve ser actualizada antes de repetir as alterações.
+
+O relatório **Pagamentos Recebidos** inclui apenas cobranças concluídas com uma data efectiva de pagamento registada, usando essa data para filtrar o período. Registos antigos sem essa data não são contabilizados nesse relatório. O motivo opcional de uma nova consulta fica guardado no registo. O PDF é carregado da compilação local; os ícones continuam a usar uma biblioteca externa opcional e podem não aparecer se a CDN estiver indisponível, sem impedir o sistema de iniciar.
+
 ## Deploy
 
 O servidor Node.js serve o frontend compilado e a API pela mesma origem. No servidor de deploy, com Node.js 20 ou superior:
@@ -72,6 +76,8 @@ npm start
 ```
 
 Configure `PORT` conforme a plataforma, `MVIDA_DATA_FILE` para o ficheiro de dados e `MVIDA_CREDENTIALS_FILE` para o ficheiro protegido de credenciais, ambos numa localização persistente e gravável. Sem disco persistente, os dados guardados podem desaparecer quando a plataforma reiniciar ou substituir a instância. Não inclua ficheiros `.env` nem dados clínicos no pacote de deploy.
+
+O armazenamento JSON e o controlo de concorrência em memória destinam-se a uma única instância do servidor. Não active réplicas múltiplas sem migrar para uma base de dados com transacções/controlo de concorrência partilhado. A limitação de tentativas de login também é local à instância e deve ser complementada por protecção no ingress se forem usadas várias instâncias.
 
 ## API e armazenamento
 
@@ -98,4 +104,6 @@ npm run build
 
 ## Limite de segurança
 
-As credenciais e as palavras-passe temporárias são guardadas como hashes scrypt separados dos dados clínicos. A API exige sessão e aplica permissões por perfil às operações e aos dados devolvidos. Ainda faltam uma base de dados de produção, encriptação dos dados em repouso, cópias de segurança automáticas testadas, limitação de tentativas de login e uma revisão formal de privacidade. Até essas medidas serem concluídas, use o deploy público apenas para demonstração com dados fictícios.
+As credenciais e as palavras-passe temporárias são guardadas como hashes scrypt separados dos dados clínicos. A API exige sessão, aplica permissões por perfil e limita localmente a cinco tentativas de acesso falhadas por conta e origem no período de 15 minutos. Esta protecção em memória não substitui limitação no ingress e não é partilhada entre réplicas.
+
+Continuam pendentes uma base de dados de produção, encriptação dos dados em repouso, cópias de segurança automáticas fora do volume e testes de restauro, além de uma revisão formal de privacidade. A cópia de segurança não pode ser configurada com segurança sem definir um destino externo, credenciais e retenção; o volume actual não tem backups configurados. Até essas medidas serem concluídas, use o deploy público apenas para demonstração com dados fictícios.

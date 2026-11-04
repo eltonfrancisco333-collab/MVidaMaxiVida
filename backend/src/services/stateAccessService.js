@@ -46,6 +46,9 @@ function validateAppointmentSchedule(currentAppointments, nextAppointments, empl
   const { date: today, time: now } = clinicDateTime();
   for (const appointment of nextAppointments) {
     const previous = currentAppointments.find((candidate) => candidate.id === appointment.id);
+    if (appointment.mo !== undefined && (typeof appointment.mo !== 'string' || appointment.mo.length > 500)) {
+      throw new ApiError(400, 'O motivo da consulta deve ter no máximo 500 caracteres.');
+    }
     if (previous && previous.d === appointment.d && previous.h === appointment.h && previous.med === appointment.med) continue;
 
     const appointmentDate = new Date(`${appointment.d}T00:00:00Z`);
@@ -107,6 +110,7 @@ function roleView(state, user) {
   if (user.pf === 'Administrador') return copy(state);
 
   const view = Object.fromEntries(collections.map((name) => [name, []]));
+  view._revision = state._revision;
   if (user.pf === 'Recepção') {
     view.patients = state.patients.map((patient) => ({
       ...projectPatient(patient, patientReferenceFields),
@@ -166,12 +170,27 @@ function enforceCollectionAccess(current, next, user) {
 }
 
 function mergeReceptionPatients(currentPatients, submittedPatients) {
-  if (currentPatients.some((patient) => !submittedPatients.some((next) => next.p === patient.p))) {
+  const patientKey = (patient) => typeof patient.p === 'string' && patient.p.trim()
+    ? `id:${patient.p.trim().toLocaleLowerCase()}`
+    : `name:${String(patient.n || '').trim().toLocaleLowerCase()}`;
+  const assertUniquePatientKeys = (patients) => {
+    const keys = new Set();
+    for (const patient of patients) {
+      const key = patientKey(patient);
+      if (keys.has(key)) {
+        throw new ApiError(409, 'Existem pacientes com identificadores repetidos. Corrija os números de processo antes de guardar.');
+      }
+      keys.add(key);
+    }
+  };
+  assertUniquePatientKeys(currentPatients);
+  assertUniquePatientKeys(submittedPatients);
+  if (currentPatients.some((patient) => !submittedPatients.some((next) => patientKey(next) === patientKey(patient)))) {
     throw new ApiError(403, 'A recepção não pode eliminar pacientes; peça ao administrador para os desactivar.');
   }
-  const previous = new Map(currentPatients.map((patient) => [patient.p, patient]));
+  const previous = new Map(currentPatients.map((patient) => [patientKey(patient), patient]));
   const merged = submittedPatients.map((patient) => {
-    const old = previous.get(patient.p);
+    const old = previous.get(patientKey(patient));
     if (!old) {
       if (Object.keys(patient).some((key) => !patientReferenceFields.includes(key) && !['al', 'tb'].includes(key))
         || (patient.al && patient.al !== 'Não registadas')
@@ -236,7 +255,6 @@ function mergeReceptionAppointments(currentAppointments, submittedAppointments, 
       }
       const doctor = byName(state.employees, appointment.med);
       appointment.v = consultationPriceFor(doctor, state.services);
-      appointment.mo = '';
       appointment.clinicalNote = '';
       appointment.rescheduleHistory = [];
     }

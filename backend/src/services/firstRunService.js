@@ -2,6 +2,9 @@ import { randomBytes } from 'node:crypto';
 import { ApiError } from '../utils/errors.js';
 
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_ATTEMPT_LIMIT = 5;
+const LOGIN_ATTEMPT_BUCKET_LIMIT = 10000;
 
 export class FirstRunService {
   constructor(stateService, credentialRepository) {
@@ -9,6 +12,7 @@ export class FirstRunService {
     this.credentialRepository = credentialRepository;
     this.pendingSetup = Promise.resolve();
     this.sessions = new Map();
+    this.loginFailures = new Map();
   }
 
   createAdministrator(input) {
@@ -45,14 +49,24 @@ export class FirstRunService {
     return operation;
   }
 
-  async authenticate(input) {
+  async authenticate(input, { clientAddress = 'unknown' } = {}) {
     const email = typeof input?.email === 'string' ? input.email.trim().toLowerCase() : '';
     const password = typeof input?.password === 'string' ? input.password : '';
+    const attemptKey = `${clientAddress}\u0000${email}`;
+    const now = Date.now();
+    const previousAttempt = this.loginFailures.get(attemptKey);
+    if (previousAttempt?.windowEndsAt <= now) this.loginFailures.delete(attemptKey);
+    else if (previousAttempt?.blockedUntil > now) {
+      throw new ApiError(429, 'Demasiadas tentativas de acesso. Aguarde antes de tentar novamente.');
+    }
+
     const { state } = await this.stateService.getState();
     const user = state.users.find((candidate) => candidate.e.toLowerCase() === email);
     if (!user || user.st !== 'Activa' || !(await this.credentialRepository.verify(email, password))) {
+      this.recordLoginFailure(attemptKey, now);
       throw new ApiError(401, 'E-mail ou palavra-passe incorrectos.');
     }
+    this.loginFailures.delete(attemptKey);
     const role = await this.credentialRepository.getRole(email);
     return this.createSession(
       {
@@ -62,6 +76,26 @@ export class FirstRunService {
       },
       await this.credentialRepository.mustChangePassword(email)
     );
+  }
+
+  recordLoginFailure(key, now) {
+    const previous = this.loginFailures.get(key);
+    const attempt = previous?.windowEndsAt > now
+      ? previous
+      : { count: 0, windowEndsAt: now + LOGIN_ATTEMPT_WINDOW_MS, blockedUntil: 0 };
+    attempt.count += 1;
+    if (attempt.count >= LOGIN_ATTEMPT_LIMIT) attempt.blockedUntil = attempt.windowEndsAt;
+    this.loginFailures.set(key, attempt);
+
+    if (this.loginFailures.size > LOGIN_ATTEMPT_BUCKET_LIMIT) {
+      for (const [attemptKey, value] of this.loginFailures) {
+        if (value.windowEndsAt <= now) this.loginFailures.delete(attemptKey);
+        if (this.loginFailures.size <= LOGIN_ATTEMPT_BUCKET_LIMIT) break;
+      }
+      while (this.loginFailures.size > LOGIN_ATTEMPT_BUCKET_LIMIT) {
+        this.loginFailures.delete(this.loginFailures.keys().next().value);
+      }
+    }
   }
 
   async getSetupStatus() {

@@ -31,6 +31,7 @@
   let saveTimer;
   let saveQueue = Promise.resolve();
   let authToken = '';
+  let stateRevision = 0;
   let systemConfigured = false;
 
   async function accountRequest(path, body) {
@@ -159,6 +160,7 @@
   }
 
   function applyState(state) {
+    stateRevision = Number.isSafeInteger(state._revision) && state._revision >= 0 ? state._revision : 0;
     PA = state.patients;
     FU = state.employees;
     US = state.users;
@@ -179,15 +181,16 @@
       const response = await fetch('/api/state', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken },
-        body: currentBody
+        body: JSON.stringify({ ...JSON.parse(currentBody), _revision: stateRevision })
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Não foi possível guardar os dados.');
+      stateRevision = Number.isSafeInteger(result._revision) && result._revision >= 0 ? result._revision : stateRevision;
       if (JSON.stringify(stateSnapshot()) === currentBody) {
         applyState(result);
         renderSavedState();
       }
-      lastSaved = JSON.stringify(result);
+      lastSaved = currentBody;
     });
     saveQueue = operation.catch(() => {});
     await operation;

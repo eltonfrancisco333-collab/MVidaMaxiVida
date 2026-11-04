@@ -42,6 +42,7 @@ test('a API persiste o modelo de dados do dashboard e protege a migração inici
     body: JSON.stringify(demoState)
   });
   assert.equal(migrationResponse.status, 200);
+  const migratedState = await migrationResponse.json();
 
   const repeatedMigrationResponse = await fetch(`${baseUrl}/api/state`, {
     method: 'POST',
@@ -50,15 +51,16 @@ test('a API persiste o modelo de dados do dashboard e protege a migração inici
   });
   assert.equal(repeatedMigrationResponse.status, 409);
 
-  const updatedState = { ...demoState, appointments: [{ ...demoState.appointments[0], st: 'Concluída' }] };
+  const updatedState = { ...demoState, _revision: migratedState._revision, appointments: [{ ...demoState.appointments[0], st: 'Concluída' }] };
   const saveResponse = await fetch(`${baseUrl}/api/state`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updatedState)
   });
   assert.equal(saveResponse.status, 200);
+  const persistedStateAfterUpdate = await saveResponse.json();
 
-  const withoutLinkedPatient = { ...updatedState, patients: [] };
+  const withoutLinkedPatient = { ...persistedStateAfterUpdate, patients: [] };
   const protectedPatientResponse = await fetch(`${baseUrl}/api/state`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -66,7 +68,7 @@ test('a API persiste o modelo de dados do dashboard e protege a migração inici
   });
   assert.equal(protectedPatientResponse.status, 409);
 
-  const withoutLinkedDoctor = { ...updatedState, employees: [] };
+  const withoutLinkedDoctor = { ...persistedStateAfterUpdate, employees: [] };
   const protectedDoctorResponse = await fetch(`${baseUrl}/api/state`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -77,7 +79,7 @@ test('a API persiste o modelo de dados do dashboard e protege a migração inici
   const invalidResponse = await fetch(`${baseUrl}/api/state`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...updatedState, employees: null })
+    body: JSON.stringify({ ...persistedStateAfterUpdate, employees: null })
   });
   assert.equal(invalidResponse.status, 400);
 
@@ -88,6 +90,42 @@ test('a API persiste o modelo de dados do dashboard e protege a migração inici
   assert.equal(persistedState.payments[0].m, '—');
   assert.equal(persistedState.patients.length, 1);
   assert.equal(persistedState.employees.length, 1);
+
+  const duplicatePatientState = {
+    ...persistedState,
+    patients: [...persistedState.patients, { ...persistedState.patients[0], n: 'Outro Paciente' }]
+  };
+  const duplicatePatientResponse = await fetch(`${baseUrl}/api/state`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(duplicatePatientState)
+  });
+  assert.equal(duplicatePatientResponse.status, 400);
+
+  const concurrentBase = structuredClone(persistedState);
+  const firstConcurrentSave = {
+    ...concurrentBase,
+    patients: [...concurrentBase.patients, { n: 'Paciente Concorrente A', p: 'PTC-A' }]
+  };
+  const staleConcurrentSave = {
+    ...concurrentBase,
+    patients: [...concurrentBase.patients, { n: 'Paciente Concorrente B', p: 'PTC-B' }]
+  };
+  const firstConcurrentResponse = await fetch(`${baseUrl}/api/state`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(firstConcurrentSave)
+  });
+  assert.equal(firstConcurrentResponse.status, 200);
+  const staleConcurrentResponse = await fetch(`${baseUrl}/api/state`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(staleConcurrentSave)
+  });
+  assert.equal(staleConcurrentResponse.status, 409);
+  const afterConcurrentSaves = await (await fetch(`${baseUrl}/api/state`)).json();
+  assert.ok(afterConcurrentSaves.patients.some((patient) => patient.p === 'PTC-A'));
+  assert.equal(afterConcurrentSaves.patients.some((patient) => patient.p === 'PTC-B'), false);
 });
 
 test('a API migra IDs ausentes ou inválidos sem criar colisões', async (t) => {
@@ -125,6 +163,47 @@ test('a API migra IDs ausentes ou inválidos sem criar colisões', async (t) => 
   assert.deepEqual(state.payments.map((payment) => payment.id), [4, 5, 6]);
 });
 
+test('a API loads legacy duplicate patient identifiers but rejects saving them', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'mvida-duplicate-patients-'));
+  const dataFile = path.join(directory, 'state.json');
+  await writeFile(dataFile, JSON.stringify({
+    patients: [{ n: 'Paciente A', p: 'PTC-001' }, { n: 'Paciente B', p: 'PTC-001' }],
+    employees: [],
+    users: [],
+    appointments: [],
+    payments: [],
+    audit: [],
+    reports: [],
+    services: []
+  }));
+  const server = createApiServer({
+    dataFile,
+    credentialsFile: path.join(directory, 'credentials.json'),
+    allowUnauthenticatedState: true
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  t.after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  const getResponse = await fetch(`${baseUrl}/api/state`);
+  assert.equal(getResponse.status, 200);
+  const legacyState = await getResponse.json();
+  assert.equal(legacyState.patients.length, 2);
+  const rejectedSave = await fetch(`${baseUrl}/api/state`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(legacyState)
+  });
+  assert.equal(rejectedSave.status, 400);
+  assert.match((await rejectedSave.json()).error, /número de processo/i);
+});
+
 test('a API aceita a correcção de nomes corrompidos sem desproteger pacientes associados', async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'mvida-api-encoding-'));
   const dataFile = path.join(directory, 'state.json');
@@ -156,9 +235,10 @@ test('a API aceita a correcção de nomes corrompidos sem desproteger pacientes 
     body: JSON.stringify(state)
   });
   assert.equal(migration.status, 200);
+  const migratedState = await migration.json();
 
   const correctedState = {
-    ...state,
+    ...migratedState,
     patients: [{ n: 'João Manuel Costa' }],
     appointments: [{ pac: 'João Manuel Costa', med: 'Dr. Carlos Silva' }]
   };
@@ -168,11 +248,12 @@ test('a API aceita a correcção de nomes corrompidos sem desproteger pacientes 
     body: JSON.stringify(correctedState)
   });
   assert.equal(correction.status, 200);
+  const correctedSavedState = await correction.json();
 
   const protectedDeletion = await fetch(`${baseUrl}/api/state`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...correctedState, patients: [] })
+    body: JSON.stringify({ ...correctedSavedState, patients: [] })
   });
   assert.equal(protectedDeletion.status, 409);
 });
@@ -299,6 +380,21 @@ test('a primeira utilização começa sem registos e permite criar o administrad
     body: JSON.stringify({ email: 'admin@example.org', password: 'incorrecta-123' })
   });
   assert.equal(rejectedLogin.status, 401);
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const failedAttempt = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '203.0.113.19' },
+      body: JSON.stringify({ email: 'unknown@example.org', password: 'incorrecta-123' })
+    });
+    assert.equal(failedAttempt.status, 401);
+  }
+  const throttledLogin = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '203.0.113.19' },
+    body: JSON.stringify({ email: 'unknown@example.org', password: 'incorrecta-123' })
+  });
+  assert.equal(throttledLogin.status, 429);
 
   const acceptedLogin = await fetch(`${baseUrl}/api/auth/login`, {
     method: 'POST',

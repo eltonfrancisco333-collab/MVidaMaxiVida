@@ -34,7 +34,12 @@ export function createFirstRunController(firstRunService) {
       const user = await firstRunService.createAdministrator(input);
       return sendJson(response, 201, user);
     }
-    const result = await firstRunService.authenticate(input);
+    const forwardedHeader = request.headers['x-forwarded-for'];
+    const forwardedAddresses = typeof forwardedHeader === 'string'
+      ? forwardedHeader.split(',').map((address) => address.trim()).filter(Boolean)
+      : [];
+    const clientAddress = forwardedAddresses?.at(-1) || request.socket.remoteAddress || 'unknown';
+    const result = await firstRunService.authenticate(input, { clientAddress });
     return sendJson(response, 200, result);
   };
 }

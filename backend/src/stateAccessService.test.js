@@ -79,10 +79,13 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
   };
   const seedResponse = await request(administrator.token, 'PUT', seeded);
   assert.equal(seedResponse.status, 200);
-  const unusedServiceRemoval = structuredClone(seeded);
+  let latestState = await seedResponse.json();
+  const unusedServiceRemoval = structuredClone(latestState);
   unusedServiceRemoval.services = unusedServiceRemoval.services.filter((service) => service.id !== 'service-unused');
-  assert.equal((await request(administrator.token, 'PUT', unusedServiceRemoval)).status, 200);
-  const consultationPriceRemoval = structuredClone(unusedServiceRemoval);
+  const unusedServiceRemovalResponse = await request(administrator.token, 'PUT', unusedServiceRemoval);
+  assert.equal(unusedServiceRemovalResponse.status, 200);
+  latestState = await unusedServiceRemovalResponse.json();
+  const consultationPriceRemoval = structuredClone(latestState);
   consultationPriceRemoval.services = consultationPriceRemoval.services.filter((service) => service.id !== 'consultation-clinical');
   const protectedPriceRemoval = await request(administrator.token, 'PUT', consultationPriceRemoval);
   assert.equal(protectedPriceRemoval.status, 409);
@@ -307,13 +310,15 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
   const receptionAppointments = await (await request(reception.token, 'GET')).json();
   receptionAppointments.appointments.push({
     id: 'appointment-2', d: secondAppointmentDate, h: '10:00', pac: 'Maria Teste',
-    med: 'Dra. Ana', esp: 'Clínica Geral', st: 'Agendada', mo: '', clinicalNote: '', v: 45000
+    med: 'Dra. Ana', esp: 'Clínica Geral', st: 'Agendada', mo: 'Consulta de acompanhamento', clinicalNote: '', v: 45000
   });
   const newAppointmentResponse = await request(reception.token, 'PUT', receptionAppointments);
   assert.equal(newAppointmentResponse.status, 200);
   const newAppointmentState = await newAppointmentResponse.json();
   assert.ok(newAppointmentState.appointments.find((appointment) => appointment.id === 'appointment-2'));
   assert.equal(newAppointmentState.appointments.find((appointment) => appointment.id === 'appointment-2').v, 52000);
+  const appointmentWithReason = await (await request(administrator.token, 'GET')).json();
+  assert.equal(appointmentWithReason.appointments.find((appointment) => appointment.id === 'appointment-2').mo, 'Consulta de acompanhamento');
   assert.equal(newAppointmentState.payments.some((payment) => payment.appointmentId === 'appointment-2'), false);
 
   const rescheduled = structuredClone(newAppointmentState);

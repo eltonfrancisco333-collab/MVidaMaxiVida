@@ -58,3 +58,33 @@ test('the consultations page provides a today view using the Maputo date', async
   assert.match(dashboard, /crows\(x=>String\(x\.d\|\|''\)\.slice\(0,10\)===TODAY\)/);
   assert.match(dashboard, /RR\.tco1=RR\.tco2=RR\.tco3=rco/);
 });
+
+test('the dashboard preserves appointment reasons and reports only received payments', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+
+  assert.match(dashboard, /mo:V\('f_mo'\)/);
+  assert.match(dashboard, /htmlSafe\(x\.mo\)/);
+  assert.match(dashboard, /Pagamentos concluídos com data efectiva registada dentro do período/);
+  assert.match(dashboard, /x\.st==='Pago'&&typeof x\.paidAt==='string'&&inP\(x\.paidAt\.slice\(0,10\)\)/);
+  assert.match(dashboard, /reportPayments=ty==='pagamentos'\?received:pg/);
+});
+
+test('the dashboard navigation and dialogs support keyboard and screen-reader access', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+
+  assert.match(dashboard, /a\.setAttribute\('role','button'\);a\.tabIndex=0/);
+  assert.match(dashboard, /event\.key==='Enter'\|\|event\.key===' '/);
+  assert.match(dashboard, /aria-labelledby','gt'/);
+  assert.match(dashboard, /event\.key==='Escape'/);
+  assert.match(dashboard, /event\.shiftKey&&document\.activeElement===first/);
+});
+
+test('the dashboard still starts if optional third-party icons are unreachable', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const loader = await readFile(path.join(projectDirectory, 'frontend', 'src', 'components', 'LegacyDashboard.jsx'), 'utf8');
+
+  assert.doesNotMatch(dashboard, /jspdf\.umd\.min\.js/);
+  assert.match(loader, /import\('jspdf'\)/);
+  assert.match(dashboard, /window\.mvidaPdfLoader\(\)\.then\(\(\)=>pdfDoc\(c\)\)/);
+  assert.match(loader, /source\.startsWith\('https:\/\/'\)\) resolve\(\)/);
+});
