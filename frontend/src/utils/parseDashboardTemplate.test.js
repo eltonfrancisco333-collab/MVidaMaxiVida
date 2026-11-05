@@ -150,12 +150,20 @@ test('account menu offers password change and logout with a five-character minim
   assert.match(dashboard, /canReset=ADM\(\)&&x\.e\.toLowerCase\(\)!==USER\.e\.toLowerCase\(\)/);
 });
 
-test('the login uses a consistent blue palette, visible labels, and responsive structure', async () => {
+test('the login and dashboard use blue without leftover green accents', async () => {
   const dashboard = await readFile(dashboardPath, 'utf8');
   const bridge = await readFile(bridgePath, 'utf8');
 
   assert.match(dashboard, /:root\{[^}]*--g:#246b9e/);
   assert.match(dashboard, /:root\[data-theme="dark"\]\{[^}]*--bg:#0b1522;--card:#142337/);
+  assert.match(dashboard, /--success:#315f87;--success-bg:#e8f1f8/);
+  assert.match(dashboard, /--success:#9bc4e7;--success-bg:#1b2c40/);
+  assert.match(dashboard, /\.lgl\{background:radial-gradient\(circle at 82% 18%,rgba\(117,175,224/);
+  assert.match(dashboard, /\.ev\.g\{background:#dbeafe;color:#1d4ed8\}/);
+  assert.doesNotMatch(
+    dashboard,
+    /#(?:0d2b23|113f32|134f3a|144e3a|157a40|193b31|287453|44bf7b|70c49a|72d99a|8ae1ae|b6efc9|b8f3c8|c6f5d9|dcf5e5|e9f8ef|edf6f1|effff7)\b|rgba\(17,30,25/i
+  );
   assert.match(dashboard, /\.dtb th\{color:#315f87/);
   assert.match(dashboard, /\.d1\{[^}]*linear-gradient\(135deg,#246b9e,#1b4a70\)/);
   assert.match(dashboard, /\.dlogo b\{[^}]*color:#123353/);
