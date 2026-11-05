@@ -71,7 +71,7 @@ td{padding:11px 6px;border-bottom:1px solid var(--bd);font-size:13px}tr:last-chi
 .act div{display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--bd)}.act div:last-child{border-bottom:0}
 .act .ic{width:36px;height:36px;border-radius:50%}.act .ic svg{width:17px;height:17px}.act b{display:block;font-size:13px;font-weight:600}.act small{color:var(--mu);font-size:12px}
 .off{display:none!important}
-.tit{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.tit h1{font-size:22px;font-weight:700;margin-right:auto}
+.tit{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.tit h1{font-size:22px;font-weight:700;margin-right:auto}.service-page .tit>div:first-child{margin-right:auto}
 .btn{display:inline-flex;align-items:center;gap:8px;background:var(--action,var(--g));color:#fff;border:0;border-radius:10px;padding:10px 16px;font:600 13.5px Inter,sans-serif;cursor:pointer}.btn:hover{filter:brightness(1.08)}.btn.o{background:var(--card);color:var(--tx);border:1px solid var(--bd);font-weight:500}
 .tabs{display:flex;gap:22px;border-bottom:1px solid var(--bd)}.tabs button{background:none;border:0;padding:8px 2px 12px;font:500 14px Inter,sans-serif;color:var(--mu);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}.tabs .on{color:var(--tx);border-color:var(--g);font-weight:600}
 .cg{display:grid;grid-template-columns:190px 1fr;gap:20px}
@@ -188,6 +188,7 @@ button:focus-visible,a:focus-visible{outline:3px solid color-mix(in srgb,var(--g
 .opc label:has(input:checked){border-color:var(--g);box-shadow:0 0 0 2px color-mix(in srgb,var(--g) 20%,transparent)}
 .consultation-list:empty{display:none!important}
 .service-price{font-weight:700;color:var(--g);white-space:nowrap}.service-source{display:block;margin-top:3px;color:var(--mu);font-size:11px;font-weight:400}.service-page{gap:16px}.service-page .tit{align-items:flex-start}.service-page .service-intro{display:flex;align-items:center;gap:12px;padding:14px 18px;border:1px solid var(--bd);border-radius:14px;background:linear-gradient(110deg,var(--gl),var(--card));color:var(--mu);line-height:1.5}.service-page .service-intro .lucide{color:var(--g)}.service-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.service-stat{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px 16px;box-shadow:var(--sh)}.service-stat-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--gl);color:var(--g)}.service-stat b{display:block;color:var(--tx);font-size:18px}.service-stat small{color:var(--mu);font-size:12px}.service-card{padding:0;overflow:hidden}.service-table th{padding:14px 16px;background:var(--bg);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}.service-table td{padding:14px 16px;vertical-align:middle}.service-table tbody tr:hover{background:color-mix(in srgb,var(--gl) 32%,var(--card))}.service-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.service-actions .btn{padding:7px 10px;font-size:12px}.service-actions .btn.delete{color:var(--rd);border-color:color-mix(in srgb,var(--rd) 36%,var(--bd))}.service-actions .btn.delete:hover{background:var(--rdb)}:root[data-theme="dark"] .service-page .service-intro{background:linear-gradient(110deg,var(--gl),var(--card))}@media(max-width:700px){.service-summary{grid-template-columns:1fr}.service-card{padding:0}.service-table td{padding:8px 0}.service-actions{justify-content:flex-start}}
+.service-inactive-toggle{display:inline-flex;align-items:center;gap:7px;color:var(--mu);font-size:12px;white-space:nowrap}.service-inactive-toggle input{accent-color:var(--g)}
 .about-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
 .about-card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px}
 .about-card h2{justify-content:flex-start;gap:8px;margin-bottom:10px}
@@ -260,8 +261,8 @@ button:focus-visible,a:focus-visible{outline:3px solid color-mix(in srgb,var(--g
   <div class="card" id="tpg"></div>
 </section>
 <section class="page off service-page" id="v-servicos">
-  <div class="tit"><div><h1>Serviços e preços</h1><p class="hs">Gestão de serviços clínicos, preços e especialidades.</p></div><div class="els"><button class="btn o" id="bsvc-catalog"><i data-lucide="layers-3"></i>Adicionar catálogo</button><button class="btn" id="bsvc-add"><i data-lucide="plus"></i>Novo Serviço</button></div></div>
-  <div class="service-intro"><i data-lucide="badge-info"></i><span>Os preços de consulta são definidos por especialidade. Serviços com cobranças no histórico podem ser desactivados, mas não apagados.</span></div>
+  <div class="tit"><div><h1>Serviços e preços</h1><p class="hs">Gestão de serviços clínicos, preços e especialidades.</p></div><div class="els"><button class="btn o" id="bsvc-catalog"><i data-lucide="list-filter"></i>Aplicar catálogo essencial</button><button class="btn" id="bsvc-add"><i data-lucide="plus"></i>Novo Serviço</button></div></div>
+  <div class="service-intro"><i data-lucide="badge-info"></i><span>O catálogo essencial mantém a consulta e dois serviços por especialidade. Preços sugeridos devem ser revistos pela clínica antes de serem cobrados; serviços antigos são preservados no histórico.</span></div>
   <div class="service-summary" id="service-summary"></div>
   <div class="card service-card" id="tsvc"></div>
 </section>
@@ -392,7 +393,7 @@ const lg=(op,ds,nv)=>{if(!USER||MUST_CHANGE_PASSWORD)return;if(USER.pf==='Admini
 let OK=null,PDF=null;
 const CB='<button class="btn o gc">Cancelar</button>';
 let modalOpener=null;
-const M=(t,b,f,w)=>{const layer=$('gm'),dialog=Q('#gm .md')[0];if(layer.classList.contains('off'))modalOpener=document.activeElement;$('gt').textContent=t;$('gb').innerHTML=b;$('gf').innerHTML=f||'<button class="btn gc">Fechar</button>';dialog.classList.remove('form-dialog');dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','gt');dialog.classList.toggle('lg',!!w);layer.classList.remove('off');ic();fit();Q('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])',dialog).find(element=>element.getClientRects().length)?.focus()};
+const M=(t,b,f,w)=>{const layer=$('gm'),dialog=Q('#gm .md')[0];if(layer.classList.contains('off'))modalOpener=document.activeElement;dialog.querySelectorAll('.modal-heading-icon').forEach(icon=>icon.remove());$('gt').textContent=t;$('gb').innerHTML=b;$('gf').innerHTML=f||'<button class="btn gc">Fechar</button>';dialog.classList.remove('form-dialog');dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','gt');dialog.classList.toggle('lg',!!w);layer.classList.remove('off');ic();fit();Q('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])',dialog).find(element=>element.getClientRects().length)?.focus()};
 const X=()=>{if($('gm').classList.contains('off'))return;$('gm').classList.add('off');modalOpener?.focus();modalOpener=null};
 const askConfirm=(title,message,label,onConfirm)=>{const opener=document.activeElement,layer=document.createElement('div');layer.className='ov';layer.style.zIndex='90';layer.setAttribute('role','presentation');const modal=document.createElement('div');modal.className='md alert-dialog confirm-dialog';modal.setAttribute('role','alertdialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-labelledby','confirm-title');const icon=document.createElement('div');icon.className='alert-dialog-icon';icon.setAttribute('aria-hidden','true');const iconName=/saída|sessão/i.test(title)?'log-out':/eliminar|apagar|remover/i.test(`${title} ${label}`)?'trash-2':'circle-help';icon.innerHTML=`<i data-lucide="${iconName}"></i>`;const head=document.createElement('div');head.className='mh';const heading=document.createElement('h2');heading.id='confirm-title';heading.textContent=title;head.appendChild(heading);const body=document.createElement('div');body.id='confirm-message';body.className='alert-message';body.textContent=message;const footer=document.createElement('div');footer.className='mf';const cancel=document.createElement('button');cancel.type='button';cancel.className='btn o';cancel.textContent='Voltar';const confirm=document.createElement('button');confirm.type='button';confirm.className='btn';confirm.textContent=label;const close=()=>{layer.remove();opener?.focus()};footer.append(cancel,confirm);modal.append(icon,head,body,footer);layer.appendChild(modal);document.body.appendChild(layer);ic();cancel.onclick=close;confirm.onclick=()=>{close();onConfirm()};layer.onclick=e=>{if(e.target===layer)close()};modal.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();close()}if(event.key==='Tab'){const controls=[cancel,confirm],index=controls.indexOf(document.activeElement);if(event.shiftKey&&index===0){event.preventDefault();confirm.focus()}else if(!event.shiftKey&&index===controls.length-1){event.preventDefault();cancel.focus()}}});confirm.focus()};
 const popup=message=>{const opener=document.activeElement,layer=document.createElement('div');layer.className='ov';layer.style.zIndex='100';const modal=document.createElement('div');modal.className='md alert-dialog';modal.setAttribute('role','alertdialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-labelledby','popup-title');const icon=document.createElement('div');icon.className='alert-dialog-icon';icon.setAttribute('aria-hidden','true');icon.innerHTML='<i data-lucide="info"></i>';const head=document.createElement('div');head.className='mh';const title=document.createElement('h2');title.id='popup-title';title.textContent='Aviso';head.appendChild(title);const body=document.createElement('p');body.className='alert-message';body.textContent=message;const footer=document.createElement('div');footer.className='mf';const button=document.createElement('button');button.type='button';button.className='btn';button.textContent='Fechar';footer.appendChild(button);const close=()=>{layer.remove();if(opener?.isConnected)opener.focus()};modal.append(icon,head,body,footer);layer.appendChild(modal);document.body.appendChild(layer);ic();button.onclick=close;modal.addEventListener('keydown',event=>{event.stopPropagation();if(event.key==='Escape'){event.preventDefault();close()}if(event.key==='Tab'){event.preventDefault();button.focus()}});button.focus()};
@@ -728,56 +729,41 @@ form('Novo pagamento',`<div class="fg">${sl('Consulta ou tratamento',['',...p.ma
 const htmlSafe=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const SERVICE_CATEGORIES=['Exames e diagnóstico laboratorial','Imagiologia','Procedimentos de enfermagem','Vacinação e saúde preventiva','Pequenas cirurgias e procedimentos','Fisioterapia e reabilitação','Odontologia','Outros serviços','Consultas'];
 const DEFAULT_SERVICE_CATALOG=[
-  ['Hemograma completo','Exames e diagnóstico laboratorial','Laboratório',500],
-  ['Glicemia','Exames e diagnóstico laboratorial','Laboratório',200],
-  ['Colesterol','Exames e diagnóstico laboratorial','Laboratório',350],
-  ['Ureia e creatinina','Exames e diagnóstico laboratorial','Laboratório',600],
-  ['Teste rápido de malária','Exames e diagnóstico laboratorial','Laboratório',250],
-  ['Teste rápido de HIV','Exames e diagnóstico laboratorial','Laboratório',250],
-  ['Teste rápido de hepatite','Exames e diagnóstico laboratorial','Laboratório',300],
-  ['Teste de gravidez','Exames e diagnóstico laboratorial','Laboratório',200],
-  ['Urina tipo 1','Exames e diagnóstico laboratorial','Laboratório',250],
-  ['Exame de fezes','Exames e diagnóstico laboratorial','Laboratório',250],
-  ['Cultura laboratorial','Exames e diagnóstico laboratorial','Laboratório',900],
-  ['Ecografia abdominal','Imagiologia','Imagiologia',1200],
-  ['Ecografia obstétrica','Imagiologia','Imagiologia',1200],
-  ['Ecografia pélvica','Imagiologia','Imagiologia',1200],
-  ['Raio-X','Imagiologia','Imagiologia',1000],
+  ['Check-up geral','Consultas','Clínica Geral',1500],
+  ['Visita domiciliária','Outros serviços','Clínica Geral',2000],
   ['Electrocardiograma (ECG)','Imagiologia','Cardiologia',800],
   ['Ecocardiograma','Imagiologia','Cardiologia',2500],
+  ['Vacinação','Vacinação e saúde preventiva','Pediatria',400],
+  ['Hemograma completo','Exames e diagnóstico laboratorial','Pediatria',500],
+  ['Ecografia obstétrica','Imagiologia','Ginecologia',1200],
+  ['Planeamento familiar','Vacinação e saúde preventiva','Ginecologia',300],
+  ['Pensos e curativos','Procedimentos de enfermagem','Dermatologia',200],
+  ['Sutura de ferida','Pequenas cirurgias e procedimentos','Dermatologia',600],
+  ['Raio-X','Imagiologia','Ortopedia',1000],
+  ['Sessão de fisioterapia','Fisioterapia e reabilitação','Ortopedia',800],
+  ['Hemograma completo','Exames e diagnóstico laboratorial','Laboratório',500],
+  ['Glicemia','Exames e diagnóstico laboratorial','Laboratório',200],
+  ['Ecografia abdominal','Imagiologia','Imagiologia',1200],
+  ['Raio-X','Imagiologia','Imagiologia',1000],
   ['Injecção / administração de medicação','Procedimentos de enfermagem','Enfermagem',150],
   ['Pensos e curativos','Procedimentos de enfermagem','Enfermagem',200],
-  ['Sutura de ferida','Procedimentos de enfermagem','Enfermagem',600],
-  ['Medição da tensão arterial','Procedimentos de enfermagem','Enfermagem',100],
-  ['Glicemia capilar','Procedimentos de enfermagem','Enfermagem',100],
-  ['Nebulização','Procedimentos de enfermagem','Enfermagem',300],
-  ['Soroterapia / perfusão endovenosa','Procedimentos de enfermagem','Enfermagem',700],
-  ['Vacinação','Vacinação e saúde preventiva','Saúde Materno-Infantil',400],
-  ['Planeamento familiar','Vacinação e saúde preventiva','Saúde Materno-Infantil',300],
   ['Consulta pré-natal','Vacinação e saúde preventiva','Saúde Materno-Infantil',600],
-  ['Consulta pós-natal','Vacinação e saúde preventiva','Saúde Materno-Infantil',600],
-  ['Check-up geral','Vacinação e saúde preventiva','Clínica Geral',1500],
-  ['Certificado médico / atestado','Vacinação e saúde preventiva','Clínica Geral',500],
+  ['Vacinação','Vacinação e saúde preventiva','Saúde Materno-Infantil',400],
   ['Drenagem de abcesso','Pequenas cirurgias e procedimentos','Cirurgia Geral',1500],
   ['Remoção de pequeno quisto','Pequenas cirurgias e procedimentos','Cirurgia Geral',2000],
-  ['Circuncisão','Pequenas cirurgias e procedimentos','Cirurgia Geral',2500],
-  ['Tratamento de unha encravada','Pequenas cirurgias e procedimentos','Cirurgia Geral',1200],
   ['Sessão de fisioterapia','Fisioterapia e reabilitação','Fisioterapia',800],
-  ['Massagem terapêutica','Fisioterapia e reabilitação','Fisioterapia',700],
   ['Reabilitação pós-lesão','Fisioterapia e reabilitação','Fisioterapia',1000],
   ['Limpeza dentária','Odontologia','Odontologia',1200],
-  ['Extracção dentária','Odontologia','Odontologia',1000],
   ['Restauração dentária','Odontologia','Odontologia',1500],
-  ['Raio-X dentário','Odontologia','Odontologia',500],
   ['Internamento / observação (diária)','Outros serviços','Internamento',2500],
+  ['Relatório / declaração médica','Outros serviços','Internamento',500],
   ['Ambulância / transporte de doentes','Outros serviços','Transporte',3000],
-  ['Visita domiciliária','Outros serviços','Clínica Geral',2000],
-  ['Telemedicina / consulta online','Outros serviços','Clínica Geral',600],
-  ['Relatório / declaração médica','Outros serviços','Clínica Geral',500]
+  ['Visita domiciliária','Outros serviços','Transporte',2000]
 ];
 const serviceForm=(service={name:'Consulta',category:'Consultas',specialty:ESPS[0],price:''})=>`<div class="fg">${fi('Nome do serviço',htmlSafe(service.name),'text','svc-name')}${sl('Categoria',[...new Set([...SERVICE_CATEGORIES,...SERVICES.map(item=>item.category).filter(Boolean)])],service.category||'Outros serviços','svc-category')}${sl('Especialidade',[...new Set([...ESPS,...FU.filter(employee=>employee.f==='Médico').map(employee=>employee.s).filter(Boolean),...SERVICES.map(item=>item.specialty).filter(Boolean)])],service.specialty||ESPS[0],'svc-specialty')}<label class="fl">Preço (MT)<input class="busca" id="svc-price" type="number" min="1" step="1" value="${service.price||''}"></label></div>`;
 const consultationPrice=doctor=>{const configured=SERVICES.filter(service=>service.name.trim().toLowerCase()==='consulta'&&service.specialty===doctor.s),service=configured.find(item=>item.active!==false)||configured[0];if(!service)return 0;return service.active===false?0:Number(service.price)||0};
 const serviceIsReferenced=service=>PG.some(payment=>payment.serviceId===service.id)||(service.name.trim().toLowerCase()==='consulta'&&CO.some(appointment=>appointment.esp===(service.specialty||'Sem especialidade')));
+let showInactiveServices=false;
 function renderServices(){
   const canManage=ADM(),specialties=new Set([...ESPS,...SERVICES.map(service=>service.specialty||'Sem especialidade')]),rows=[];
   for(const specialty of specialties){
@@ -791,13 +777,18 @@ function renderServices(){
   rows.sort((a,b)=>a.category.localeCompare(b.category,'pt')||a.specialty.localeCompare(b.specialty,'pt')||a.name.localeCompare(b.name,'pt'));
   const activeServices=SERVICES.filter(service=>service.active!==false).length,configuredPrices=rows.filter(row=>row.name==='Consulta'&&row.price>0&&row.state==='Activo').length;
   $('service-summary').innerHTML=`<div class="service-stat"><span class="service-stat-icon"><i data-lucide="stethoscope"></i></span><div><b>${specialties.size}</b><small>Especialidades</small></div></div><div class="service-stat"><span class="service-stat-icon"><i data-lucide="badge-check"></i></span><div><b>${configuredPrices}</b><small>Preços de consulta activos</small></div></div><div class="service-stat"><span class="service-stat-icon"><i data-lucide="layers-3"></i></span><div><b>${activeServices}</b><small>Serviços activos</small></div></div>`;
-  const query=norm(TQ.tsvc||''),filteredRows=query?rows.filter(row=>norm([row.name,row.category,row.specialty,row.professionals,row.price?mt(row.price):'',row.state].join(' ')).includes(query)):rows;
+  const activeBySpecialty=specialty=>SERVICES.filter(service=>(service.specialty||'Sem especialidade')===specialty&&service.name.trim().toLowerCase()!=='consulta'&&service.active!==false);
+  const needsCuration=[...specialties].some(specialty=>{
+    const active=activeBySpecialty(specialty),definitions=DEFAULT_SERVICE_CATALOG.filter(([, ,entrySpecialty])=>entrySpecialty===specialty);
+    return active.length!==2||(definitions.length===2&&definitions.some(([name])=>!active.some(service=>service.name.trim().toLowerCase()===name.toLowerCase())));
+  });
+  const visibleRows=showInactiveServices?rows:rows.filter(row=>row.state!=='Inactivo');
+  const query=norm(TQ.tsvc||''),filteredRows=query?visibleRows.filter(row=>norm([row.name,row.category,row.specialty,row.professionals,row.price?mt(row.price):'',row.state].join(' ')).includes(query)):visibleRows;
   const serviceAction=(action,label,icon,index,specialty)=>`<button type="button" class="ia" data-service-action="${action}"${index===undefined?'':` data-i="${index}"`} data-specialty="${htmlSafe(specialty)}" title="${label}" aria-label="${label}"><i data-lucide="${icon}"></i></button>`;
   const body=filteredRows.map(row=>`<tr><td><strong>${htmlSafe(row.name)}</strong>${row.state==='Preço base'?'<small class="service-source">Preço base do médico</small>':''}</td><td>${htmlSafe(row.category)}</td><td>${htmlSafe(row.specialty)}</td><td>${htmlSafe(row.professionals)}</td><td class="service-price">${row.price?mt(row.price):'Por definir'}</td><td>${row.state==='Preço base'?'<span class="tag t-o">Preço base</span>':tag(row.state)}</td><td><div class="acc service-actions">${serviceAction('view','Ver detalhes','eye',row.index,row.specialty)}${canManage&&row.index!==undefined?`${serviceAction('edit','Editar serviço','pencil',row.index,row.specialty)}${serviceAction('toggle',row.state==='Inactivo'?'Activar':'Desactivar','power',row.index,row.specialty)}${row.referenced?'':serviceAction('delete','Eliminar serviço','trash-2',row.index,row.specialty)}`:canManage&&row.name==='Consulta'?`${row.price>0?serviceAction('toggle','Desactivar preço','power',undefined,row.specialty):''}${serviceAction('price','Definir preço','pencil',undefined,row.specialty)}`:''}</div></td></tr>`).join('');
   $('bsvc-add').style.display=canManage?'':'none';
-  const knownCatalog=DEFAULT_SERVICE_CATALOG.filter(([name,,specialty])=>SERVICES.some(service=>service.name.trim().toLocaleLowerCase()===name.toLocaleLowerCase()&&service.specialty===specialty)).length;
-  $('bsvc-catalog').style.display=canManage&&knownCatalog<DEFAULT_SERVICE_CATALOG.length?'':'none';
-  $('tsvc').innerHTML=`<div class="table-tools"><label class="table-search"><i data-lucide="search"></i><input class="busca" type="text" data-table-search="tsvc" value="${htmlSafe(TQ.tsvc||'')}" placeholder="Pesquisar nesta tabela..." aria-label="Pesquisar serviços"></label><span>${filteredRows.length} de ${rows.length} serviços</span></div><div class="wrap"><table class="service-table"><thead><tr><th>Serviço</th><th>Categoria</th><th>Especialidade</th><th>Profissionais associados</th><th>Preço</th><th>Estado</th><th>Ações</th></tr></thead><tbody>${body||`<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:28px">${query?'Nenhum serviço corresponde à pesquisa.':'Ainda não há serviços nem especialidades registados.'}</td></tr>`}</tbody></table></div>`;lab();ic();
+  $('bsvc-catalog').style.display=canManage&&needsCuration?'':'none';
+  $('tsvc').innerHTML=`<div class="table-tools"><label class="table-search"><i data-lucide="search"></i><input class="busca" type="text" data-table-search="tsvc" value="${htmlSafe(TQ.tsvc||'')}" placeholder="Pesquisar nesta tabela..." aria-label="Pesquisar serviços"></label><label class="service-inactive-toggle"><input type="checkbox" id="service-show-inactive"${showInactiveServices?' checked':''}>Mostrar inactivos</label><span>${filteredRows.length} de ${visibleRows.length} serviços</span></div><div class="wrap"><table class="service-table"><thead><tr><th>Serviço</th><th>Categoria</th><th>Especialidade</th><th>Profissionais associados</th><th>Preço</th><th>Estado</th><th>Ações</th></tr></thead><tbody>${body||`<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:28px">${query?'Nenhum serviço corresponde à pesquisa.':!showInactiveServices&&rows.some(row=>row.state==='Inactivo')?'Não há serviços activos; marque “Mostrar inactivos” para consultar o histórico.':'Ainda não há serviços nem especialidades registados.'}</td></tr>`}</tbody></table></div>`;lab();ic();$('service-show-inactive').onchange=event=>{showInactiveServices=event.target.checked;renderServices()};
   Q('[data-service-action]').forEach(button=>button.onclick=async()=>{
       const action=button.dataset.serviceAction,specialty=button.dataset.specialty,index=button.dataset.i===''||button.dataset.i===undefined?undefined:Number(button.dataset.i),service=index===undefined?undefined:SERVICES[index],row=rows.find(item=>item.index===index&&item.specialty===specialty)||rows.find(item=>item.name==='Consulta'&&item.specialty===specialty);
       if(action==='view'&&row){const linkedDoctors=FU.filter(employee=>employee.f==='Médico'&&employee.s===row.specialty&&employee.st==='Activo').map(employee=>employee.n).join(', ')||'Sem médico associado',safeKv=(label,value)=>kv(htmlSafe(label),htmlSafe(value));dm('Detalhes do Serviço','stethoscope',row.name,[['Categoria',row.category],['Especialidade',row.specialty],['Preço',row.price?mt(row.price):'Por definir']],[['Estado',row.state],['Profissionais',linkedDoctors]],[['Resumo',`<div class="fg">${safeKv('Serviço',row.name)}${safeKv('Categoria',row.category)}${safeKv('Especialidade',row.specialty)}${safeKv('Profissionais associados',linkedDoctors)}${safeKv('Preço',row.price?mt(row.price):'Por definir')}${safeKv('Estado',row.state)}</div>`]]);return}
@@ -808,7 +799,31 @@ function renderServices(){
       if(action==='toggle'&&service){const previous=service.active;if(previous===false&&(!Number.isSafeInteger(service.price)||service.price<=0)){popup('Defina um preço válido antes de activar este serviço.');return}if(previous===false&&service.name.trim().toLowerCase()==='consulta'&&SERVICES.some(item=>item!==service&&item.active!==false&&item.name.trim().toLowerCase()==='consulta'&&item.specialty===service.specialty)){popup('Já existe um preço de consulta activo para esta especialidade.');return}service.active=previous===false;try{await window.mvidaAuth.saveState();renderServices()}catch(error){service.active=previous;popup(error.message||'Não foi possível actualizar o serviço.')}return}
       if(action==='toggle')setConsultationActive(specialty,false)
     });
-  $('bsvc-catalog').onclick=async()=>{const missing=DEFAULT_SERVICE_CATALOG.filter(([name,,specialty])=>!SERVICES.some(service=>service.name.trim().toLocaleLowerCase()===name.toLocaleLowerCase()&&service.specialty===specialty));if(!missing.length){renderServices();return}const added=missing.map(([name,category,specialty,price],index)=>({id:`catalogo-${Date.now()}-${index}`,name,category,specialty,price,active:true}));SERVICES.push(...added);try{await window.mvidaAuth.saveState();renderServices();toast(`${added.length} serviços adicionados ao catálogo.`)}catch(error){SERVICES.splice(SERVICES.length-added.length,added.length);renderServices();popup(error.message||'Não foi possível carregar o catálogo de serviços.')}};
+  $('bsvc-catalog').onclick=()=>{
+    const desired=[],selected=[];
+    for(const specialty of specialties){
+      let definitions=DEFAULT_SERVICE_CATALOG.filter(([, ,entrySpecialty])=>entrySpecialty===specialty);
+      if(definitions.length!==2){
+        const existing=SERVICES.filter(service=>(service.specialty||'Sem especialidade')===specialty&&service.name.trim().toLowerCase()!=='consulta')
+          .sort((left,right)=>Number(right.active!==false)-Number(left.active!==false)||PG.filter(payment=>payment.serviceId===right.id).length-PG.filter(payment=>payment.serviceId===left.id).length);
+        if(existing.length<2){popup(`Não foi possível definir dois serviços para ${specialty}; faltam nomes ou preços no catálogo.`);return}
+        definitions=existing.slice(0,2).map(service=>[service.name,service.category||'Outros serviços',specialty,service.price]);
+      }
+      for(const [name,category,entrySpecialty,price] of definitions){
+        let service=SERVICES.find(candidate=>!selected.includes(candidate)&&candidate.name.trim().toLowerCase()===name.toLowerCase()&&candidate.specialty===entrySpecialty);
+        if(!service){service={id:`catalogo-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,name,category,specialty:entrySpecialty,price,active:true};desired.push(service)}
+        else selected.push(service);
+      }
+    }
+    const extras=SERVICES.filter(service=>service.name.trim().toLowerCase()!=='consulta'&&!selected.includes(service));
+    askConfirm('Aplicar catálogo essencial?',`Serão mantidos dois serviços por especialidade, além da consulta. ${desired.length} serviços poderão ser adicionados e ${extras.length} serviços antigos ficarão inactivos, sem apagar cobranças ou histórico. Preços sugeridos devem ser confirmados pela clínica antes de serem cobrados.`,'Aplicar catálogo',async()=>{
+      const previous=SERVICES.map(service=>({...service}));
+      const next=SERVICES.map(service=>service.name.trim().toLowerCase()==='consulta'?service:{...service,active:selected.includes(service)});
+      SERVICES.splice(0,SERVICES.length,...next,...desired);
+      try{await window.mvidaAuth.saveState();renderServices();toast('Catálogo essencial aplicado. Confirme os preços sugeridos antes de registar cobranças.')}
+      catch(error){SERVICES.splice(0,SERVICES.length,...previous);renderServices();popup(error.message||'Não foi possível aplicar o catálogo essencial.')}
+    })
+  };
   const setConsultationActive=async(specialty,active)=>{
     const index=SERVICES.findIndex(service=>service.name.trim().toLowerCase()==='consulta'&&service.specialty===specialty);
     let service=index>=0?SERVICES[index]:null,created=false;

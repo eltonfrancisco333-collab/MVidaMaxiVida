@@ -196,6 +196,27 @@ test('all edit forms use a polished responsive modal and visible interaction fee
   assert.match(dashboard, /@media\(prefers-reduced-motion:reduce\)/);
 });
 
+test('switching from an edit form to a details dialog clears the stale edit icon', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const modalHelper = dashboard.slice(
+    dashboard.indexOf('const M='),
+    dashboard.indexOf('\nconst X=', dashboard.indexOf('const M='))
+  );
+  const formHelper = dashboard.slice(
+    dashboard.indexOf('const form='),
+    dashboard.indexOf('\nconst V=', dashboard.indexOf('const form='))
+  );
+
+  assert.match(modalHelper, /querySelectorAll\('\.modal-heading-icon'\)\.forEach\(icon=>icon\.remove\(\)\)/);
+  assert.match(formHelper, /insertBefore\(icon,\$\('gt'\)\)/);
+});
+
+test('service page keeps its creation actions aligned to the far right of the title row', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+
+  assert.match(dashboard, /\.service-page \.tit>div:first-child\{margin-right:auto\}/);
+});
+
 test('the login and dashboard use blue without leftover green accents', async () => {
   const dashboard = await readFile(dashboardPath, 'utf8');
   const bridge = await readFile(bridgePath, 'utf8');
@@ -252,7 +273,7 @@ test('table search stays beside each table and filters results as the user types
   assert.match(tableRenderer, /filterTableRows\(id,rows\)/);
   assert.match(tableRenderer, /addEventListener\('input',event=>\{const input=event\.target\.closest\('\[data-table-search\]'\)/);
   assert.match(serviceRenderer, /data-table-search="tsvc"/);
-  assert.match(serviceRenderer, /filteredRows=query\?rows\.filter/);
+  assert.match(serviceRenderer, /filteredRows=query\?visibleRows\.filter/);
   assert.doesNotMatch(dashboard, /id="global-search"/);
 });
 
@@ -390,16 +411,24 @@ test('notification generation respects appointment status and user profile', asy
   assert.equal(financeNotifications.every(({ page }) => page === 'Pagamentos'), true);
 });
 
-test('the services page lets administrators configure prices for every specialty', async () => {
+test('the services page provides a curated two-service catalog for each specialty', async () => {
   const dashboard = await readFile(dashboardPath, 'utf8');
+  const catalog = dashboard.match(/const DEFAULT_SERVICE_CATALOG=\[([\s\S]*?)\n\];/)[1];
+  const counts = new Map();
+  for (const [, specialty] of catalog.matchAll(/^\s*\['[^']*','[^']*','([^']+)',\d+\],?$/gm)) {
+    counts.set(specialty, (counts.get(specialty) || 0) + 1);
+  }
 
   assert.match(dashboard, /rows\.push\(\{name:'Consulta',category:'Consultas',specialty/);
   assert.match(dashboard, /DEFAULT_SERVICE_CATALOG=\[/);
   assert.match(dashboard, /\['Hemograma completo','Exames e diagnóstico laboratorial','Laboratório',500\]/);
   assert.match(dashboard, /\['Ecocardiograma','Imagiologia','Cardiologia',2500\]/);
   assert.match(dashboard, /\['Sessão de fisioterapia','Fisioterapia e reabilitação','Fisioterapia',800\]/);
-  assert.match(dashboard, /\['Extracção dentária','Odontologia','Odontologia',1000\]/);
+  assert.match(dashboard, /\['Restauração dentária','Odontologia','Odontologia',1500\]/);
+  assert.ok(counts.size >= 14);
+  assert.ok([...counts.values()].every((count) => count === 2));
   assert.match(dashboard, /bsvc-catalog/);
+  assert.match(dashboard, /Aplicar catálogo essencial/);
   assert.match(dashboard, /category:service\.category\|\|'Outros serviços'/);
   assert.match(dashboard, /<th>Categoria<\/th>/);
   assert.match(dashboard, /const value=service\.price/);
@@ -411,7 +440,11 @@ test('the services page lets administrators configure prices for every specialty
   assert.match(dashboard, /Preço indisponível em Serviços/);
   assert.match(dashboard, /consultationPrice\(doctor\)>0/);
   assert.match(dashboard, /serviceIsReferenced/);
+  assert.match(dashboard, /service-show-inactive/);
+  assert.match(dashboard, /active:selected\.includes\(service\)/);
+  assert.match(dashboard, /Serão mantidos dois serviços por especialidade, além da consulta/);
   assert.match(dashboard, /service-page/);
+  assert.match(dashboard, /\.service-page \.tit>div:first-child\{margin-right:auto\}/);
 });
 
 test('new employee forms use distinct sections and consistent centred dialogs', async () => {
