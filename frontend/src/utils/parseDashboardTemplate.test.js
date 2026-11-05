@@ -190,6 +190,48 @@ test('empty consultation lists do not show table headers without appointments', 
   assert.match(dashboard, /else renderAppointmentEmpty\('tco2'/);
 });
 
+test('table search stays beside each table and filters results as the user types', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const tableRenderer = dashboard.slice(
+    dashboard.indexOf('const tableTools='),
+    dashboard.indexOf('\nfunction lab()', dashboard.indexOf('const tableTools='))
+  );
+  const serviceRenderer = dashboard.slice(
+    dashboard.indexOf('function renderServices()'),
+    dashboard.indexOf('\nconst deleteService=', dashboard.indexOf('function renderServices()'))
+  );
+
+  assert.match(tableRenderer, /tableTools\(id,filtered\.length\)/);
+  assert.match(tableRenderer, /data-table-search="\$\{id\}"/);
+  assert.match(tableRenderer, /filterTableRows\(id,rows\)/);
+  assert.match(tableRenderer, /addEventListener\('input',event=>\{const input=event\.target\.closest\('\[data-table-search\]'\)/);
+  assert.match(serviceRenderer, /data-table-search="tsvc"/);
+  assert.match(serviceRenderer, /filteredRows=query\?rows\.filter/);
+  assert.doesNotMatch(dashboard, /id="global-search"/);
+});
+
+test('service actions use the shared icon controls and open the redesigned detail view', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const serviceRenderer = dashboard.slice(
+    dashboard.indexOf('function renderServices()'),
+    dashboard.indexOf('\nconst deleteService=', dashboard.indexOf('function renderServices()'))
+  );
+
+  assert.match(serviceRenderer, /serviceAction\('view','Ver detalhes','eye'/);
+  assert.match(serviceRenderer, /serviceAction\('edit','Editar serviço','pencil'/);
+  assert.match(serviceRenderer, /serviceAction\('delete','Eliminar serviço','trash-2'/);
+  assert.match(serviceRenderer, /dm\('Detalhes do Serviço'/);
+  assert.match(dashboard, /\.dp\{display:grid/);
+  assert.match(dashboard, /\.dt-panel\{padding:18px/);
+});
+
+test('dark mode gives edit fields readable contrast', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+
+  assert.match(dashboard, /:root\[data-theme="dark"\] \.busca,:root\[data-theme="dark"\] \.sel,:root\[data-theme="dark"\] textarea\{background:#1a2e43;border-color:var\(--bd\);color:var\(--tx\)\}/);
+  assert.match(dashboard, /:root\[data-theme="dark"\] \.busca:disabled,:root\[data-theme="dark"\] textarea:disabled\{background:#142337;color:#a9bacb\}/);
+});
+
 test('diagnosis validation and save failures use accessible popups', async () => {
   const dashboard = await readFile(dashboardPath, 'utf8');
   const bridge = await readFile(bridgePath, 'utf8');
@@ -316,12 +358,10 @@ test('the services page lets administrators configure prices for every specialty
   assert.match(dashboard, /<th>Categoria<\/th>/);
   assert.match(dashboard, /const value=service\.price/);
   assert.match(dashboard, /id="f_v" type="number" disabled/);
-  assert.match(dashboard, /svc-consultation-add/);
-  assert.match(dashboard, /Definir preço/);
-  assert.match(dashboard, /Q\('\.svc-consultation-add'\)/);
-  assert.match(dashboard, /svc-delete/);
-  assert.match(dashboard, /svc-toggle/);
-  assert.match(dashboard, /svc-consultation-toggle/);
+  assert.match(dashboard, /serviceAction\('price','Definir preço','pencil'/);
+  assert.match(dashboard, /serviceAction\('delete','Eliminar serviço','trash-2'/);
+  assert.match(dashboard, /serviceAction\('toggle'/);
+  assert.match(dashboard, /data-service-action/);
   assert.match(dashboard, /Preço indisponível em Serviços/);
   assert.match(dashboard, /consultationPrice\(doctor\)>0/);
   assert.match(dashboard, /serviceIsReferenced/);
