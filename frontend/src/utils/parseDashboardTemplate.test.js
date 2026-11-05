@@ -173,6 +173,29 @@ test('confirmation and alert dialogs share a compact responsive blue design', as
   assert.doesNotMatch(confirmation, /style\.cssText/);
 });
 
+test('all edit forms use a polished responsive modal and visible interaction feedback', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const formHelper = dashboard.slice(
+    dashboard.indexOf('const form='),
+    dashboard.indexOf('\nconst V=', dashboard.indexOf('const form='))
+  );
+  const modalHelper = dashboard.slice(
+    dashboard.indexOf('const M='),
+    dashboard.indexOf('\nconst X=', dashboard.indexOf('const M='))
+  );
+
+  assert.match(formHelper, /dialog\.classList\.add\('form-dialog'\)/);
+  assert.match(formHelper, /modal-heading-icon/);
+  assert.match(modalHelper, /dialog\.classList\.remove\('form-dialog'\)/);
+  assert.match(dashboard, /\.md\.form-dialog\{width:min\(720px,calc\(100vw - 32px\)\)/);
+  assert.match(dashboard, /\.form-dialog \.fl:focus-within\{[^}]*box-shadow/);
+  assert.match(dashboard, /\.form-dialog \.mf \.btn#ok:hover\{[^}]*translateY/);
+  assert.match(dashboard, /button:active,[\s\S]*?transform:translateY\(1px\) scale\(\.98\)/);
+  assert.match(dashboard, /a:focus:not\(:focus-visible\),\[role="button"\]:focus:not\(:focus-visible\)/);
+  assert.match(dashboard, /\.wrap tbody tr:focus-within\{background:/);
+  assert.match(dashboard, /@media\(prefers-reduced-motion:reduce\)/);
+});
+
 test('the login and dashboard use blue without leftover green accents', async () => {
   const dashboard = await readFile(dashboardPath, 'utf8');
   const bridge = await readFile(bridgePath, 'utf8');
