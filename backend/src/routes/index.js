@@ -1,10 +1,12 @@
 import { createStateController } from '../controllers/stateController.js';
+import { createAppointmentController } from '../controllers/appointmentController.js';
 import { getHealth } from '../controllers/healthController.js';
 import { sendJson } from '../utils/http.js';
 import { createFirstRunController } from '../controllers/firstRunController.js';
 
 export function createRouter(stateAccessService, firstRunService, options) {
   const stateController = createStateController(stateAccessService, firstRunService, options);
+  const appointmentController = createAppointmentController(stateAccessService, firstRunService);
   const firstRunController = createFirstRunController(firstRunService);
 
   return async (request, response) => {
@@ -24,6 +26,10 @@ export function createRouter(stateAccessService, firstRunService, options) {
     if (['/api/auth/logout', '/api/auth/change-password', '/api/users/password/reset', '/api/users/access'].includes(requestUrl.pathname)) {
       if (request.method !== 'POST') return sendJson(response, 405, { error: 'Método não permitido.' });
       return firstRunController(request, response);
+    }
+    if (requestUrl.pathname === '/api/appointments/complete') {
+      if (request.method !== 'PATCH') return sendJson(response, 405, { error: 'Método não permitido.' });
+      return appointmentController(request, response);
     }
     if (requestUrl.pathname !== '/api/state') {
       return sendJson(response, 404, { error: 'Endereço não encontrado.' });

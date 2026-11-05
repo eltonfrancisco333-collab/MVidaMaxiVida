@@ -28,6 +28,7 @@
   });
   const collections = Object.keys(stateSnapshot());
   let lastSaved = '';
+  let lastObservedState = JSON.stringify(stateSnapshot());
   let saveTimer;
   let saveQueue = Promise.resolve();
   let authToken = '';
@@ -68,6 +69,8 @@
       });
     },
     saveState,
+    completeAppointment,
+    refreshState: loadAuthenticatedState,
     logout() {
       return accountRequest('/api/auth/logout');
     },
@@ -84,6 +87,7 @@
       RL = [];
       SERVICES = [];
       lastSaved = JSON.stringify(stateSnapshot());
+      lastObservedState = lastSaved;
       renderSavedState();
     }
   };
@@ -157,6 +161,7 @@
     rus();
     rau();
     ic();
+    window.dispatchEvent(new Event('mvida:state-loaded'));
   }
 
   function applyState(state) {
@@ -176,32 +181,55 @@
     const body = JSON.stringify(stateSnapshot());
     if (body === lastSaved) return;
     const operation = saveQueue.catch(() => {}).then(async () => {
-      const currentBody = JSON.stringify(stateSnapshot());
-      if (currentBody === lastSaved) return;
+      if (body === lastSaved) return;
       const response = await fetch('/api/state', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken },
-        body: JSON.stringify({ ...JSON.parse(currentBody), _revision: stateRevision })
+        body: JSON.stringify({ ...JSON.parse(body), _revision: stateRevision })
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Não foi possível guardar os dados.');
       stateRevision = Number.isSafeInteger(result._revision) && result._revision >= 0 ? result._revision : stateRevision;
-      let savedBody = currentBody;
-      if (JSON.stringify(stateSnapshot()) === currentBody) {
+      let savedBody = body;
+      const stateUnchanged = JSON.stringify(stateSnapshot()) === body;
+      if (stateUnchanged) {
         applyState(result);
         renderSavedState();
         savedBody = JSON.stringify(stateSnapshot());
       }
       lastSaved = savedBody;
+      lastObservedState = stateUnchanged ? savedBody : JSON.stringify(stateSnapshot());
     });
     saveQueue = operation.catch(() => {});
     await operation;
   }
 
+  async function completeAppointment(appointmentId, clinicalNote) {
+    const response = await fetch('/api/appointments/complete', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken },
+      body: JSON.stringify({ appointmentId, clinicalNote })
+    });
+    const state = await response.json();
+    if (!response.ok || !isCompatibleState(state)) {
+      throw new Error(state.error || 'Não foi possível concluir a consulta.');
+    }
+    repairKnownText(state);
+    applyState(state);
+    renderSavedState();
+    lastSaved = JSON.stringify(stateSnapshot());
+    lastObservedState = lastSaved;
+  }
+
   function scheduleSave() {
     clearTimeout(saveTimer);
+    lastObservedState = JSON.stringify(stateSnapshot());
     saveTimer = setTimeout(() => {
-      saveState().catch((error) => toast(error.message || 'Não foi possível guardar os dados no servidor.'));
+      saveState().catch((error) => {
+        const message = error.message || 'Não foi possível guardar os dados no servidor.';
+        if (typeof window.mvidaNotify === 'function') window.mvidaNotify(message);
+        else toast(message);
+      });
     }, 350);
   }
 
@@ -376,6 +404,7 @@
     }
     renderSavedState();
     lastSaved = JSON.stringify(stateSnapshot());
+    lastObservedState = lastSaved;
   }
 
   async function connect() {
@@ -384,7 +413,9 @@
     if (!response.ok) throw new Error(status.error || 'Não foi possível verificar a configuração do sistema.');
     systemConfigured = status.configured;
     window.addEventListener('mvida:data-change', scheduleSave);
-    new MutationObserver(scheduleSave).observe(document.body, { childList: true, subtree: true });
+    new MutationObserver(() => {
+      if (JSON.stringify(stateSnapshot()) !== lastObservedState) scheduleSave();
+    }).observe(document.body, { childList: true, subtree: true });
     document.body.classList.add('auth-pending');
     installAccountAccess();
     overlay.remove();

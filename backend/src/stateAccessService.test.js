@@ -65,6 +65,11 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
     headers: { 'Content-Type': 'application/json', ...auth(token), ...extraHeaders },
     ...(state ? { body: JSON.stringify(state) } : {})
   });
+  const completeAppointment = (token, appointmentId, clinicalNote) => fetch(`${baseUrl}/api/appointments/complete`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...auth(token) },
+    body: JSON.stringify({ appointmentId, clinicalNote })
+  });
 
   const initial = await (await request(administrator.token, 'GET')).json();
   const firstAppointmentDate = maputoDate(2), secondAppointmentDate = maputoDate(3), thirdAppointmentDate = maputoDate(4);
@@ -93,14 +98,18 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
       med: 'Dra. Ana', esp: 'Clínica Geral', st: 'Agendada', mo: 'Consulta de rotina', v: 52000
     }],
     services: [
-      { id: 'service-1', name: 'Fisioterapia', price: 25000, active: true },
-      { id: 'service-unused', name: 'Massagem', specialty: 'Dermatologia', price: 18000, active: true },
+      { id: 'service-1', name: 'Fisioterapia', category: 'Fisioterapia e reabilitação', specialty: 'Fisioterapia', price: 25000, active: true },
+      { id: 'service-unused', name: 'Massagem', category: 'Fisioterapia e reabilitação', specialty: 'Dermatologia', price: 18000, active: true },
       { id: 'consultation-clinical', name: 'Consulta', specialty: 'Clínica Geral', price: 52000, active: true }
     ]
   };
   const seedResponse = await request(administrator.token, 'PUT', seeded);
   assert.equal(seedResponse.status, 200);
   let latestState = await seedResponse.json();
+  assert.equal(latestState.services.find((service) => service.id === 'service-1').category, 'Fisioterapia e reabilitação');
+  const invalidServiceCategory = structuredClone(latestState);
+  invalidServiceCategory.services[0].category = 9;
+  assert.equal((await request(administrator.token, 'PUT', invalidServiceCategory)).status, 400);
   const unusedServiceRemoval = structuredClone(latestState);
   unusedServiceRemoval.services = unusedServiceRemoval.services.filter((service) => service.id !== 'service-unused');
   const unusedServiceRemovalResponse = await request(administrator.token, 'PUT', unusedServiceRemoval);
@@ -203,10 +212,9 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
   assert.equal(doctorState.appointments.length, 1);
   assert.equal(doctorState.patients[0].al, 'Alergia conhecida');
   assert.deepEqual(doctorState.payments, []);
-  const directCompletion = structuredClone(doctorState);
-  directCompletion.appointments[0].st = 'Concluída';
-  directCompletion.appointments[0].clinicalNote = 'Diagnóstico teste';
-  assert.equal((await request(doctor.token, 'PUT', directCompletion)).status, 409);
+  const directCompletionWithoutDiagnosis = structuredClone(doctorState);
+  directCompletionWithoutDiagnosis.appointments[0].st = 'Concluída';
+  assert.equal((await request(doctor.token, 'PUT', directCompletionWithoutDiagnosis)).status, 400);
 
   const started = structuredClone(doctorState);
   started.appointments[0].st = 'Em curso';
@@ -257,7 +265,15 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
   assert.equal(paidState.payments[0].st, 'Pago');
   assert.ok(paidState.payments[0].paidAt);
   assert.match(paidState.payments[0].receiptNumber, /^DIN[A-F0-9]{14}$/);
+  assert.equal(paidState.payments[0].appointmentId, 'appointment-1');
   assert.equal(paidState.payments[0].registeredBy, 'Recepcionista');
+  const repeatedPaymentResponse = await request(reception.token, 'PUT', paidState);
+  assert.equal(repeatedPaymentResponse.status, 200);
+  const repeatedPaymentState = await repeatedPaymentResponse.json();
+  const repeatedConsultationCharges = repeatedPaymentState.payments
+    .filter((payment) => payment.appointmentId === 'appointment-1');
+  assert.equal(repeatedConsultationCharges.length, 1);
+  assert.equal(repeatedConsultationCharges[0].receiptNumber, paidState.payments[0].receiptNumber);
   const paymentAuditState = await (await request(administrator.token, 'GET')).json();
   const paymentAudit = paymentAuditState.audit.find((entry) => entry.op === 'Pagamento registado');
   assert.equal(paymentAudit.u, 'Recepcionista');
@@ -272,7 +288,8 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
   assert.equal((await request(reception.token, 'PUT', withReceptionNote)).status, 200);
   const consultationVoid = await (await request(administrator.token, 'GET')).json();
   consultationVoid.payments.find((payment) => payment.appointmentId === 'appointment-1').st = 'Anulado';
-  consultationVoid.payments.find((payment) => payment.appointmentId === 'appointment-1').refundReason = 'Erro de pagamento registado';
+  consultationVoid.payments.find((payment) => payment.appointmentId === 'appointment-1').voidReason = 'Erro de pagamento registado';
+  consultationVoid.payments.find((payment) => payment.appointmentId === 'appointment-1').voidConfirmed = true;
   const consultationVoidResponse = await request(administrator.token, 'PUT', consultationVoid);
   assert.equal(consultationVoidResponse.status, 200);
   const voidedConsultationState = await consultationVoidResponse.json();
@@ -282,6 +299,7 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
   assert.equal(consultationCharges.filter((payment) => payment.st === 'Pendente').length, 1);
   assert.ok(consultationCharges.find((payment) => payment.st === 'Anulado').voidedAt);
   assert.ok(consultationCharges.find((payment) => payment.st === 'Anulado').voidedBy);
+  assert.equal(consultationCharges.find((payment) => payment.st === 'Anulado').refundedAt, undefined);
 
   const repriced = structuredClone(await (await request(administrator.token, 'GET')).json());
   repriced.payments[0].v = 1;
@@ -290,14 +308,20 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
 
   const withTreatment = structuredClone(await (await request(reception.token, 'GET')).json());
   const treatmentChargeId = Math.max(0, ...withTreatment.payments.map((payment) => Number(payment.id))) + 1;
-  withTreatment.payments.push({
+  const incorrectlyPricedTreatment = structuredClone(withTreatment);
+  incorrectlyPricedTreatment.payments.push({
     id: treatmentChargeId, kind: 'Tratamento', serviceId: 'service-1', d: '2026-11-06',
     pac: 'Maria Teste', ds: 'Fisioterapia - sessão especial', v: 28000, st: 'Pendente', m: '—'
+  });
+  assert.equal((await request(reception.token, 'PUT', incorrectlyPricedTreatment)).status, 400);
+  withTreatment.payments.push({
+    id: treatmentChargeId, kind: 'Tratamento', serviceId: 'service-1', d: '2026-11-06',
+    pac: 'Maria Teste', ds: 'Fisioterapia - sessão especial', v: 25000, st: 'Pendente', m: '—'
   });
   const treatmentResponse = await request(reception.token, 'PUT', withTreatment);
   assert.equal(treatmentResponse.status, 200);
   const pendingTreatment = await treatmentResponse.json();
-  assert.equal(pendingTreatment.payments.find((payment) => payment.id === treatmentChargeId).v, 28000);
+  assert.equal(pendingTreatment.payments.find((payment) => payment.id === treatmentChargeId).v, 25000);
 
   const incompleteTransfer = structuredClone(pendingTreatment);
   const incompleteTransferCharge = incompleteTransfer.payments.find((payment) => payment.id === treatmentChargeId);
@@ -315,18 +339,63 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
 
   const shortReason = await (await request(administrator.token, 'GET')).json();
   shortReason.payments.find((payment) => payment.id === treatmentChargeId).st = 'Anulado';
-  shortReason.payments.find((payment) => payment.id === treatmentChargeId).refundReason = 'ok';
+  shortReason.payments.find((payment) => payment.id === treatmentChargeId).voidReason = 'ok';
+  shortReason.payments.find((payment) => payment.id === treatmentChargeId).voidConfirmed = true;
   assert.equal((await request(administrator.token, 'PUT', shortReason)).status, 400);
-  const treatmentRefund = await paidTreatmentResponse.json();
-  treatmentRefund.payments.find((payment) => payment.id === treatmentChargeId).st = 'Anulado';
-  treatmentRefund.payments.find((payment) => payment.id === treatmentChargeId).refundReason = 'Serviço não realizado';
-  assert.equal((await request(reception.token, 'PUT', treatmentRefund)).status, 403);
+  const unconfirmedVoid = await (await request(administrator.token, 'GET')).json();
+  unconfirmedVoid.payments.find((payment) => payment.id === treatmentChargeId).st = 'Anulado';
+  unconfirmedVoid.payments.find((payment) => payment.id === treatmentChargeId).voidReason = 'Pagamento duplicado';
+  assert.equal((await request(administrator.token, 'PUT', unconfirmedVoid)).status, 400);
+  const missingRefundEvidence = await (await request(administrator.token, 'GET')).json();
+  const missingEvidenceCharge = missingRefundEvidence.payments.find((payment) => payment.id === treatmentChargeId);
+  Object.assign(missingEvidenceCharge, {
+    st: 'Estornado',
+    refundReason: 'Serviço não realizado',
+    refundedAt: new Date().toISOString().slice(0, 10),
+    refundMethod: 'Transferência',
+    refundConfirmed: true
+  });
+  assert.equal((await request(administrator.token, 'PUT', missingRefundEvidence)).status, 400);
+  const unconfirmedRefund = structuredClone(missingRefundEvidence);
+  const unconfirmedRefundCharge = unconfirmedRefund.payments.find((payment) => payment.id === treatmentChargeId);
+  unconfirmedRefundCharge.refundReference = 'TRF-DEV-123';
+  unconfirmedRefundCharge.refundConfirmed = false;
+  assert.equal((await request(administrator.token, 'PUT', unconfirmedRefund)).status, 400);
+  const treatmentRefund = await (await request(administrator.token, 'GET')).json();
+  const receptionRefund = structuredClone(treatmentRefund);
+  const receptionRefundCharge = receptionRefund.payments.find((payment) => payment.id === treatmentChargeId);
+  Object.assign(receptionRefundCharge, {
+    st: 'Estornado',
+    refundReason: 'Serviço não realizado',
+    refundedAt: new Date().toISOString().slice(0, 10),
+    refundMethod: 'Transferência',
+    refundReference: 'TRF-DEV-123',
+    refundConfirmed: true
+  });
+  assert.equal((await request(reception.token, 'PUT', receptionRefund)).status, 403);
   const adminTreatmentRefund = await (await request(administrator.token, 'GET')).json();
-  adminTreatmentRefund.payments.find((payment) => payment.id === treatmentChargeId).st = 'Anulado';
-  adminTreatmentRefund.payments.find((payment) => payment.id === treatmentChargeId).refundReason = 'Serviço não realizado';
+  const adminRefundCharge = adminTreatmentRefund.payments.find((payment) => payment.id === treatmentChargeId);
+  Object.assign(adminRefundCharge, {
+    st: 'Estornado',
+    refundReason: 'Serviço não realizado',
+    refundedAt: new Date().toISOString().slice(0, 10),
+    refundMethod: 'Transferência',
+    refundReference: 'TRF-DEV-123',
+    refundConfirmed: true
+  });
   const refundResponse = await request(administrator.token, 'PUT', adminTreatmentRefund);
   assert.equal(refundResponse.status, 200);
-  assert.equal((await refundResponse.json()).payments.find((payment) => payment.id === treatmentChargeId).st, 'Anulado');
+  const refundedState = await refundResponse.json();
+  const refundedPayment = refundedState.payments.find((payment) => payment.id === treatmentChargeId);
+  assert.equal(refundedPayment.st, 'Estornado');
+  assert.equal(refundedPayment.refundedBy, 'Admin');
+  assert.equal(refundedPayment.refundReference, 'TRF-DEV-123');
+  assert.equal(refundedPayment.receiptNumber, treatmentRefund.payments.find((payment) => payment.id === treatmentChargeId).receiptNumber);
+  assert.ok(refundedState.audit.some((entry) => entry.op === 'Estorno de pagamento'));
+
+  const changedRefund = structuredClone(refundedState);
+  changedRefund.payments.find((payment) => payment.id === treatmentChargeId).v += 1;
+  assert.equal((await request(administrator.token, 'PUT', changedRefund)).status, 403);
 
   const receptionAppointments = await (await request(reception.token, 'GET')).json();
   receptionAppointments.appointments.push({
@@ -379,7 +448,55 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
   const financeAfterCompletion = await (await request(finance.token, 'GET')).json();
   assert.equal(financeAfterCompletion.payments.find((payment) => payment.appointmentId === 'appointment-3').st, 'Pendente');
 
+  const directAppointmentDate = maputoDate(5);
+  const appointmentForDirectCompletion = await (await request(reception.token, 'GET')).json();
+  appointmentForDirectCompletion.appointments.push({
+    id: 'appointment-4', d: directAppointmentDate, h: '11:00', pac: 'Maria Teste',
+    med: 'Dra. Ana', esp: 'Clínica Geral', st: 'Agendada', mo: '', clinicalNote: '', v: 45000
+  });
+  assert.equal((await request(reception.token, 'PUT', appointmentForDirectCompletion)).status, 200);
+  const doctorDirectCompletion = await (await request(doctor.token, 'GET')).json();
+  const appointmentToCompleteDirectly = doctorDirectCompletion.appointments.find((appointment) => appointment.id === 'appointment-4');
+  appointmentToCompleteDirectly.st = 'Concluída';
+  appointmentToCompleteDirectly.clinicalNote = 'Diagnóstico concluído directamente';
+  const directCompletionResponse = await request(doctor.token, 'PUT', doctorDirectCompletion);
+  const directCompletionState = await directCompletionResponse.json();
+  assert.equal(directCompletionResponse.status, 200, JSON.stringify(directCompletionState));
+  assert.equal(directCompletionState.appointments.find((appointment) => appointment.id === 'appointment-4').st, 'Concluída');
+  const directCompletionFinancialState = await (await request(administrator.token, 'GET')).json();
+  const directCompletionCharge = directCompletionFinancialState.payments.find((payment) => payment.appointmentId === 'appointment-4');
+  assert.equal(directCompletionCharge.st, 'Pendente');
+
+  const fifthAppointmentDate = maputoDate(6);
+  const appointmentForEndpointCompletion = await (await request(reception.token, 'GET')).json();
+  appointmentForEndpointCompletion.appointments.push({
+    id: 'appointment-5', d: fifthAppointmentDate, h: '12:00', pac: 'Maria Teste',
+    med: 'Dra. Ana', esp: 'Clínica Geral', st: 'Agendada', mo: '', clinicalNote: '', v: 45000
+  });
+  assert.equal((await request(reception.token, 'PUT', appointmentForEndpointCompletion)).status, 200);
+  assert.equal((await completeAppointment(reception.token, 'appointment-5', 'Diagnóstico teste')).status, 403);
+  assert.equal((await completeAppointment(doctor.token, 'appointment-5', '  ')).status, 400);
+  const endpointCompletionResponse = await completeAppointment(doctor.token, 'appointment-5', 'Malaria');
+  const endpointCompletionState = await endpointCompletionResponse.json();
+  assert.equal(endpointCompletionResponse.status, 200, JSON.stringify(endpointCompletionState));
+  assert.equal(endpointCompletionState.appointments.find((appointment) => appointment.id === 'appointment-5').st, 'Concluída');
+  assert.equal(endpointCompletionState.appointments.find((appointment) => appointment.id === 'appointment-5').clinicalNote, 'Malaria');
+  assert.equal((await completeAppointment(doctor.token, 'appointment-5', 'Malaria')).status, 200);
+  const endpointCompletionFinancialState = await (await request(administrator.token, 'GET')).json();
+  assert.equal(endpointCompletionFinancialState.payments.filter((payment) => payment.appointmentId === 'appointment-5').length, 1);
+  assert.equal(endpointCompletionFinancialState.payments.find((payment) => payment.appointmentId === 'appointment-5').st, 'Pendente');
+
   const cancelCompletedAppointment = await (await request(reception.token, 'GET')).json();
   cancelCompletedAppointment.appointments.find((appointment) => appointment.id === 'appointment-3').st = 'Cancelada';
   assert.equal((await request(reception.token, 'PUT', cancelCompletedAppointment)).status, 409);
+
+  const receptionPatientEdit = await (await request(reception.token, 'GET')).json();
+  receptionPatientEdit.patients[0].t = '840000001';
+  delete receptionPatientEdit.patients[0].al;
+  delete receptionPatientEdit.patients[0].tb;
+  const receptionPatientEditResponse = await request(reception.token, 'PUT', receptionPatientEdit);
+  assert.equal(receptionPatientEditResponse.status, 200);
+  const protectedPatientData = await (await request(administrator.token, 'GET')).json();
+  assert.equal(protectedPatientData.patients[0].al, 'Alergia conhecida');
+  assert.equal(protectedPatientData.patients[0].tb, 'A+');
 });

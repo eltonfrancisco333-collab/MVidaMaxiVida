@@ -40,13 +40,13 @@ O ícone de lua/sol na barra superior, ao lado das notificações, alterna entre
 
 ## Consultas, tratamentos e pagamentos
 
-Ao agendar uma consulta, o sistema permite horários disponíveis no horário do médico para hoje (desde que ainda não tenham passado) e para datas futuras. O preço é definido por especialidade na tela **Serviços** ou usa o preço configurado para o médico, salvo quando o preço da especialidade estiver explicitamente desactivado. O médico inicia a consulta, regista o diagnóstico e só então a conclui; nesse momento é criada uma única cobrança integral pendente, ligada à consulta. Cancelada, Falta e Concluída são estados finais. Só consultas ainda agendadas podem ser remarcadas.
+Ao agendar uma consulta, o sistema permite horários disponíveis no horário do médico para hoje (desde que ainda não tenham passado) e para datas futuras. O preço é definido por especialidade na tela **Serviços** ou usa o preço configurado para o médico, salvo quando o preço da especialidade estiver explicitamente desactivado. O médico inicia a consulta, regista o diagnóstico e só então a conclui; a conclusão é validada e guardada numa operação própria do servidor, que cria uma única cobrança integral pendente ligada à consulta. Cancelada, Falta e Concluída são estados finais. Só consultas ainda agendadas podem ser remarcadas.
 
 O cancelamento e a falta não têm taxa; a consulta e os registos financeiros existentes são preservados. Cancelar uma consulta já paga sinaliza que o estorno precisa de ser tratado.
 
-O pagamento é integral e registado na clínica pela Recepção ou pelo Administrador. Dinheiro não requer dado adicional; Cartão exige os últimos quatro dígitos; Transferência exige o número do comprovativo; e Pagamento móvel exige um número M-Pesa válido (84 ou 85, mais sete dígitos). Ao registar o pagamento, a API cria um número de recibo único e grava o responsável, a data e o IP da requisição. Um pagamento concluído não pode voltar a pendente. Só o Administrador pode anulá-lo; é obrigatório indicar um motivo com pelo menos três letras, e ficam preservados o histórico e o recibo. A Recepção só pode editar observações de pagamentos concluídos.
+O pagamento é integral e registado na clínica pela Recepção ou pelo Administrador. Dinheiro não requer dado adicional; Cartão exige os últimos quatro dígitos; Transferência exige o número do comprovativo; e Pagamento móvel exige um número M-Pesa válido (84 ou 85, mais sete dígitos). Ao registar o pagamento, a API cria um número de recibo único e grava o responsável, a data e o IP da requisição. Um pagamento concluído não pode voltar a pendente. Só o Administrador pode anular um registo inválido, indicando um motivo; a anulação não declara nem regista uma devolução de dinheiro. Se o valor recebido for efectivamente devolvido, o Administrador regista um estorno integral com confirmação, motivo, data, forma e referência/comprovativo. O recibo original e o histórico são preservados e identificados como estornados; os relatórios de valores recebidos contam apenas pagamentos que permanecem concluídos. A Recepção só pode editar observações de pagamentos concluídos.
 
-Os preços de consulta por especialidade e os serviços associados aos profissionais estão na tela **Serviços**. O Administrador pode gerir serviços e preços; a Recepção pode consultá-los e registar tratamentos. Os recibos e relatórios podem ser descarregados em PDF pelo botão de download.
+Os preços de consulta por especialidade e os serviços associados aos profissionais estão na tela **Serviços**. O catálogo identifica categoria, especialidade, preço e estado; o Administrador pode carregar o catálogo inicial, gerir serviços e preços, enquanto a Recepção pode consultá-los e registar tratamentos com o preço associado ao serviço. Os recibos e relatórios podem ser descarregados em PDF pelo botão de download.
 
 ## Perfis e permissões
 
@@ -87,6 +87,7 @@ O armazenamento JSON e o controlo de concorrência em memória destinam-se a uma
 - `GET /api/state` — dados permitidos ao perfil da sessão autenticada.
 - `POST /api/state` — migração administrativa autenticada, apenas quando ainda não existem dados.
 - `PUT /api/state` — valida e guarda o estado completo.
+- `PATCH /api/appointments/complete` — conclusão autenticada pelo médico responsável; recebe `appointmentId` e `clinicalNote`, guarda a conclusão e cria a cobrança pendente.
 - `POST /api/setup` — criação do primeiro administrador, permitida apenas antes de existirem utilizadores.
 - `POST /api/auth/login` — validação do acesso dos utilizadores do sistema.
 - `POST /api/auth/change-password` — alteração da palavra-passe da sessão autenticada.

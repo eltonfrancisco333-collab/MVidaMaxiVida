@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import vm from 'node:vm';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -32,6 +33,93 @@ test('the dashboard follows the completed-consultation payment workflow', async 
   assert.match(dashboard, /paymentDetailsValid/);
   assert.match(dashboard, /Só a recepção ou o administrador podem registar pagamentos/);
   assert.match(dashboard, /receiptNumber\|\|/);
+});
+
+test('consultations and payments only confirm after persistence and roll back on failure', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const consultationCompletion = dashboard.slice(
+    dashboard.indexOf("form('Actualizar estado da consulta'"),
+    dashboard.indexOf("\n    return", dashboard.indexOf("form('Actualizar estado da consulta'"))
+  );
+  const paymentRegistration = dashboard.slice(
+    dashboard.indexOf('const ppg=i=>'),
+    dashboard.indexOf('const npg=()=>', dashboard.indexOf('const ppg=i=>'))
+  );
+  const newPaymentRegistration = dashboard.slice(
+    dashboard.indexOf('const npg=()=>'),
+    dashboard.indexOf('const htmlSafe=', dashboard.indexOf('const npg=()=>'))
+  );
+
+  assert.match(consultationCompletion, /await window\.mvidaAuth\.saveState\(\)/);
+  assert.match(consultationCompletion, /catch\(error\)\{[\s\S]*?Object\.assign\(x,previousAppointment\)/);
+  assert.match(paymentRegistration, /await window\.mvidaAuth\.saveState\(\)/);
+  assert.match(paymentRegistration, /catch\(error\)\{Object\.assign\(current,previous\)/);
+  assert.match(newPaymentRegistration, /await window\.mvidaAuth\.saveState\(\)/);
+  assert.match(newPaymentRegistration, /catch\(error\)\{Object\.assign\(x,previous\)/);
+});
+
+test('payment registration refreshes server state and links a unique completed legacy consultation', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const bridge = await readFile(bridgePath, 'utf8');
+  const paymentWorkflow = dashboard.slice(
+    dashboard.indexOf('const legacyAppointmentForPayment='),
+    dashboard.indexOf('const htmlSafe=', dashboard.indexOf('const legacyAppointmentForPayment='))
+  );
+
+  assert.match(bridge, /refreshState:\s*loadAuthenticatedState/);
+  assert.match(paymentWorkflow, /await window\.mvidaAuth\.refreshState\(\)/);
+  assert.match(paymentWorkflow, /const linkLegacyPaymentToAppointment=payment=>/);
+  assert.match(paymentWorkflow, /payment\.appointmentId=appointment\.id/);
+  assert.match(paymentWorkflow, /appointment\.st!=='Concluída'/);
+  assert.match(paymentWorkflow, /A consulta associada ainda não está concluída/);
+});
+
+test('presentation mutations do not trigger repeated saves and reception cannot submit clinical fields', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const bridge = await readFile(bridgePath, 'utf8');
+  const observer = bridge.slice(
+    bridge.indexOf('new MutationObserver('),
+    bridge.indexOf('document.body.classList.add', bridge.indexOf('new MutationObserver('))
+  );
+  const patientForm = dashboard.slice(
+    dashboard.indexOf('const fpa='),
+    dashboard.indexOf('const okpa=', dashboard.indexOf('const fpa='))
+  );
+
+  assert.match(observer, /JSON\.stringify\(stateSnapshot\(\)\)\s*!==\s*lastObservedState/);
+  assert.match(bridge, /lastObservedState = JSON\.stringify\(stateSnapshot\(\)\)/);
+  assert.match(patientForm, /\$\{ADM\(\)\?sc\('Clínico'/);
+  assert.match(patientForm, /\.\.\.\(ADM\(\)\?\{al:V\('f_al'\)\|\|'Não registadas',tb:\$\('f_tb'\)\.value\}:\{\}\)/);
+});
+
+test('queued state saves send the exact snapshot captured when the save was requested', async () => {
+  const bridge = await readFile(bridgePath, 'utf8');
+  const saveState = bridge.slice(
+    bridge.indexOf('async function saveState()'),
+    bridge.indexOf('\n  function scheduleSave()', bridge.indexOf('async function saveState()'))
+  );
+
+  assert.match(saveState, /const body = JSON\.stringify\(stateSnapshot\(\)\)/);
+  assert.match(saveState, /saveQueue\.catch\(\(\) => \{\}\)\.then\(async \(\) => \{\s*if \(body === lastSaved\) return/);
+  assert.match(saveState, /body: JSON\.stringify\(\{\s*\.\.\.JSON\.parse\(body\), _revision: stateRevision\s*\}\)/);
+  assert.doesNotMatch(saveState, /const currentBody = JSON\.stringify\(stateSnapshot\(\)\)/);
+  assert.doesNotMatch(saveState, /currentBody/);
+  assert.match(saveState, /JSON\.stringify\(stateSnapshot\(\)\) === body/);
+  assert.match(bridge, /lastObservedState = stateUnchanged \? savedBody : JSON\.stringify\(stateSnapshot\(\)\)/);
+  assert.match(bridge, /async function completeAppointment\(appointmentId, clinicalNote\)/);
+  assert.match(bridge, /fetch\('\/api\/appointments\/complete'/);
+});
+
+test('payment management distinguishes invalid records from completed refunds', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+
+  assert.match(dashboard, /st==='Estornado'/);
+  assert.match(dashboard, /refund-confirm/);
+  assert.match(dashboard, /refund-date/);
+  assert.match(dashboard, /refund-method/);
+  assert.match(dashboard, /refund-reference/);
+  assert.match(dashboard, /ESTORNADO/);
+  assert.match(dashboard, /status==='Estornado'/);
 });
 
 test('the dashboard displays automatic patient process number generation', async () => {
@@ -66,8 +154,12 @@ test('the login uses a consistent blue palette, visible labels, and responsive s
   const dashboard = await readFile(dashboardPath, 'utf8');
   const bridge = await readFile(bridgePath, 'utf8');
 
-  assert.match(dashboard, /--g:#246b9e/);
-  assert.match(dashboard, /--bg:#0b1522;--card:#142337/);
+  assert.match(dashboard, /:root\{[^}]*--g:#246b9e/);
+  assert.match(dashboard, /:root\[data-theme="dark"\]\{[^}]*--bg:#0b1522;--card:#142337/);
+  assert.match(dashboard, /\.dtb th\{color:#315f87/);
+  assert.match(dashboard, /\.d1\{[^}]*linear-gradient\(135deg,#246b9e,#1b4a70\)/);
+  assert.match(dashboard, /\.dlogo b\{[^}]*color:#123353/);
+  assert.match(dashboard, /BL=\[36,107,158\],GR=\[91,111,140\]/);
   assert.match(dashboard, /class="login-highlights"/);
   assert.match(bridge, /title\.textContent = 'Aceder à sua conta'/);
   assert.match(dashboard, /data-login-label="email">E-mail/);
@@ -82,13 +174,140 @@ test('empty consultation lists do not show table headers without appointments', 
 
   assert.match(dashboard, /\.consultation-list:empty\{display:none!important\}/);
   assert.match(dashboard, /function tbl\(id,heads,rows,N,hideEmpty\)\{N=N\|\|6;if\(hideEmpty&&!rows\.length\)\{PG0\[id\]=0;\$\(id\)\.innerHTML='';return\}/);
-  assert.match(dashboard, /tbl\('tco3',CH,crows\([\s\S]*?\),6,true\)/);
+  assert.match(dashboard, /function renderAppointmentEmpty\(id,title,description,buttonLabel,onClick\)/);
+  assert.match(dashboard, /Sem consultas para hoje/);
+  assert.match(dashboard, /Sem agendamentos futuros/);
+  assert.match(dashboard, /Nova consulta',nco\)/);
+  assert.match(dashboard, /else renderAppointmentEmpty\('tco3'/);
+  assert.match(dashboard, /else renderAppointmentEmpty\('tco2'/);
+});
+
+test('diagnosis validation and save failures use accessible popups', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const bridge = await readFile(bridgePath, 'utf8');
+
+  assert.match(dashboard, /const showFormError=message=>popup\(message\)/);
+  assert.match(dashboard, /role','alertdialog'/);
+  assert.match(dashboard, /Para concluir a consulta, preencha o diagnóstico com pelo menos 3 caracteres\./);
+  assert.doesNotMatch(dashboard, /toast\('Registe o diagnóstico antes de concluir a consulta\.'/);
+  assert.match(bridge, /window\.mvidaNotify\(message\)/);
+});
+
+test('doctors can conclude a scheduled or in-progress consultation with a diagnosis', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const doctorWorkflow = dashboard.slice(
+    dashboard.indexOf('const eco=i=>'),
+    dashboard.indexOf('const nco=()=>', dashboard.indexOf('const eco=i=>'))
+  );
+  const doctorCompletion = doctorWorkflow.slice(
+    doctorWorkflow.indexOf("if(isDoctor()){"),
+    doctorWorkflow.indexOf("\n  const reception=", doctorWorkflow.indexOf("if(isDoctor()){"))
+  );
+
+  assert.match(doctorCompletion, /x\.st==='Agendada'\?\['','Em curso','Concluída','Cancelada'\]:\['','Concluída','Cancelada'\]/);
+  assert.match(doctorCompletion, /id="f_diagnosis-section" style="display:none">Diagnóstico/);
+  assert.match(doctorCompletion, /if\(status==='Concluída'\)await window\.mvidaAuth\.completeAppointment\(x\.id,note\)/);
+  assert.match(doctorCompletion, /else await window\.mvidaAuth\.saveState\(\)/);
+  assert.match(doctorCompletion, /f_diagnosis-section.*style\.display=\$\('f_s'\)\.value==='Concluída'/);
+  assert.match(doctorCompletion, /popup\(error\.message\|\|'Não foi possível concluir a consulta\.'/);
+  assert.doesNotMatch(doctorCompletion, /toast\(status==='Concluída'/);
+});
+
+test('dark mode keeps dashboard headings and primary report actions readable', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+
+  assert.match(dashboard, /:root\[data-theme="dark"\]\{[^}]*--action:#246b9e/);
+  assert.match(dashboard, /\.btn\{[^}]*background:var\(--action,var\(--g\)\);color:#fff/);
+  assert.match(dashboard, /\.sg\.on\{[^}]*background:var\(--action,var\(--g\)\);color:#fff/);
+  assert.match(dashboard, /:root\[data-theme="dark"\] \.ht,:root\[data-theme="dark"\] \.ph2\{color:var\(--tx\)\}/);
+  assert.match(dashboard, /:root\[data-theme="dark"\] \.hdt\{color:var\(--bl\)\}/);
+  assert.match(dashboard, /id="gr"[^>]*>[\s\S]*?Gerar Relatório/);
+});
+
+test('notifications are generated from appointments and outstanding payments', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const bridge = await readFile(bridgePath, 'utf8');
+
+  assert.match(dashboard, /\.bell b\{display:none/);
+  assert.match(dashboard, /aria-controls="np" aria-expanded="false"/);
+  assert.match(dashboard, /function notificationItems\(\)/);
+  assert.match(dashboard, /Consulta por actualizar/);
+  assert.match(dashboard, /Consulta agendada para hoje/);
+  assert.match(dashboard, /payment\.st!=='Pendente'\|\|!paymentReady\(payment\)/);
+  assert.match(dashboard, /Tratamento com pagamento pendente/);
+  assert.match(dashboard, /mvida-notifications-read:/);
+  assert.match(dashboard, /window\.setInterval\(renderNotifications,60_000\)/);
+  assert.match(dashboard, /Marcar todas como lidas/);
+  assert.match(dashboard, /data-notification-page="\$\{item\.page\}"/);
+  assert.match(bridge, /new Event\('mvida:state-loaded'\)/);
+  assert.match(dashboard, /b\.setAttribute\('aria-expanded',String\(show\)\)/);
+});
+
+test('notification generation respects appointment status and user profile', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const start = dashboard.indexOf('function notificationItems()');
+  const end = dashboard.indexOf('\nconst notificationStorageKey', start);
+  assert.ok(start >= 0 && end > start, 'notification generator should be available');
+  const generator = dashboard.slice(start, end);
+  const appointments = [
+    { id: 'past', d: '2026-11-04', h: '09:00', pac: 'Paciente A', med: 'Dra. Um', st: 'Agendada' },
+    { id: 'today-later', d: '2026-11-05', h: '11:00', pac: 'Paciente B', med: 'Dra. Um', st: 'Agendada' },
+    { id: 'today-past', d: '2026-11-05', h: '09:00', pac: 'Paciente C', med: 'Dr. Dois', st: 'Em curso' },
+    { id: 'done', d: '2026-11-05', h: '08:00', pac: 'Paciente D', med: 'Dra. Um', st: 'Concluída' },
+    { id: 'cancelled', d: '2026-11-04', h: '08:00', pac: 'Paciente E', med: 'Dra. Um', st: 'Cancelada' }
+  ];
+  const payments = [
+    { id: 1, kind: 'Consulta', appointmentId: 'done', pac: 'Paciente D', ds: 'Consulta de teste', v: 500 },
+    { id: 2, kind: 'Tratamento', pac: 'Paciente F', ds: 'Tratamento de teste', v: 700 },
+    { id: 3, kind: 'Tratamento', pac: 'Paciente G', ds: 'Tratamento pago', v: 900, st: 'Pago' }
+  ];
+  const buildNotifications = (profile, name) => vm.runInNewContext(`(${generator})()`, {
+    USER: { pf: profile, n: name },
+    MUST_CHANGE_PASSWORD: false,
+    CO: appointments,
+    PG: payments.map((payment) => ({ st: 'Pendente', ...payment })),
+    clinicClock: () => ({ date: '2026-11-05', time: '10:00' }),
+    ownAppointment: (appointment) => profile !== 'Médico' || appointment.med === name,
+    br: (date) => date,
+    mt: (amount) => `${amount} MT`,
+    paymentReady: (payment) => payment.kind === 'Tratamento'
+      || (payment.kind === 'Consulta' && appointments.some((appointment) => (
+        appointment.id === payment.appointmentId && appointment.st === 'Concluída'
+      )))
+  });
+
+  const administratorNotifications = buildNotifications('Administrador', 'Admin');
+  assert.deepEqual(Array.from(administratorNotifications, ({ title }) => title).sort(), [
+    'Consulta agendada para hoje',
+    'Consulta por actualizar',
+    'Consulta por actualizar',
+    'Consulta concluída com pagamento pendente',
+    'Tratamento com pagamento pendente'
+  ].sort());
+
+  const doctorNotifications = buildNotifications('Médico', 'Dra. Um');
+  assert.equal(doctorNotifications.some(({ description }) => description.includes('Paciente C')), false);
+  assert.equal(doctorNotifications.some(({ title }) => title.includes('pagamento')), false);
+
+  const financeNotifications = buildNotifications('Financeiro', 'Financeiro');
+  assert.equal(financeNotifications.length, 2);
+  assert.equal(financeNotifications.every(({ page }) => page === 'Pagamentos'), true);
 });
 
 test('the services page lets administrators configure prices for every specialty', async () => {
   const dashboard = await readFile(dashboardPath, 'utf8');
 
-  assert.match(dashboard, /rows\.push\(\{name:'Consulta',specialty/);
+  assert.match(dashboard, /rows\.push\(\{name:'Consulta',category:'Consultas',specialty/);
+  assert.match(dashboard, /DEFAULT_SERVICE_CATALOG=\[/);
+  assert.match(dashboard, /\['Hemograma completo','Exames e diagnóstico laboratorial','Laboratório',500\]/);
+  assert.match(dashboard, /\['Ecocardiograma','Imagiologia','Cardiologia',2500\]/);
+  assert.match(dashboard, /\['Sessão de fisioterapia','Fisioterapia e reabilitação','Fisioterapia',800\]/);
+  assert.match(dashboard, /\['Extracção dentária','Odontologia','Odontologia',1000\]/);
+  assert.match(dashboard, /bsvc-catalog/);
+  assert.match(dashboard, /category:service\.category\|\|'Outros serviços'/);
+  assert.match(dashboard, /<th>Categoria<\/th>/);
+  assert.match(dashboard, /const value=service\.price/);
+  assert.match(dashboard, /id="f_v" type="number" disabled/);
   assert.match(dashboard, /svc-consultation-add/);
   assert.match(dashboard, /Definir preço/);
   assert.match(dashboard, /Q\('\.svc-consultation-add'\)/);
@@ -99,6 +318,21 @@ test('the services page lets administrators configure prices for every specialty
   assert.match(dashboard, /consultationPrice\(doctor\)>0/);
   assert.match(dashboard, /serviceIsReferenced/);
   assert.match(dashboard, /service-page/);
+});
+
+test('new employee forms use distinct sections and consistent centred dialogs', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const employeeForm = dashboard.slice(dashboard.indexOf('const nfu=()=>'), dashboard.indexOf('const dfu=', dashboard.indexOf('const nfu=()=>')));
+
+  assert.match(employeeForm, /staff-form/);
+  assert.match(employeeForm, /Dados pessoais/);
+  assert.match(employeeForm, /Contacto/);
+  assert.match(employeeForm, /Função e departamento/);
+  assert.match(employeeForm, /Telefone alternativo \(opcional\)/);
+  assert.match(dashboard, /\.ov \.md\.alert-dialog\{width:min\(520px,100%\);text-align:center\}/);
+  assert.match(dashboard, /modal\.className='md alert-dialog'/);
+  assert.match(dashboard, /body\.className='alert-message'/);
+  assert.match(dashboard, /justify-content:center;gap:10px/);
 });
 
 test('the consultations page provides a today view using the Maputo date', async () => {
