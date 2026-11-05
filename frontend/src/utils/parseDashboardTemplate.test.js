@@ -150,6 +150,29 @@ test('account menu offers password change and logout with a five-character minim
   assert.match(dashboard, /canReset=ADM\(\)&&x\.e\.toLowerCase\(\)!==USER\.e\.toLowerCase\(\)/);
 });
 
+test('confirmation and alert dialogs share a compact responsive blue design', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const confirmation = dashboard.slice(
+    dashboard.indexOf('const askConfirm='),
+    dashboard.indexOf('\nconst popup=', dashboard.indexOf('const askConfirm='))
+  );
+  const alert = dashboard.slice(
+    dashboard.indexOf('const popup='),
+    dashboard.indexOf('\ndocument.addEventListener(\'keydown\'', dashboard.indexOf('const popup='))
+  );
+
+  assert.match(dashboard, /\.ov \.md\.alert-dialog\{width:min\(440px,calc\(100vw - 32px\)\);text-align:center/);
+  assert.match(dashboard, /\.alert-dialog-icon\{display:grid;place-items:center;width:52px/);
+  assert.match(dashboard, /@media\(max-width:420px\)\{\.ov\{padding:12px\}/);
+  assert.match(confirmation, /confirm-dialog/);
+  assert.match(confirmation, /alert-dialog-icon/);
+  assert.match(confirmation, /\/saída\|sessão\/i\.test\(title\)\?'log-out'/);
+  assert.match(confirmation, /\?'trash-2':'circle-help'/);
+  assert.match(alert, /className='md alert-dialog'/);
+  assert.match(alert, /data-lucide="info"/);
+  assert.doesNotMatch(confirmation, /style\.cssText/);
+});
+
 test('the login and dashboard use blue without leftover green accents', async () => {
   const dashboard = await readFile(dashboardPath, 'utf8');
   const bridge = await readFile(bridgePath, 'utf8');
@@ -377,7 +400,7 @@ test('new employee forms use distinct sections and consistent centred dialogs', 
   assert.match(employeeForm, /Contacto/);
   assert.match(employeeForm, /Função e departamento/);
   assert.match(employeeForm, /Telefone alternativo \(opcional\)/);
-  assert.match(dashboard, /\.ov \.md\.alert-dialog\{width:min\(520px,100%\);text-align:center\}/);
+  assert.match(dashboard, /\.ov \.md\.alert-dialog\{width:min\(440px,calc\(100vw - 32px\)\);text-align:center/);
   assert.match(dashboard, /modal\.className='md alert-dialog'/);
   assert.match(dashboard, /body\.className='alert-message'/);
   assert.match(dashboard, /justify-content:center;gap:10px/);
