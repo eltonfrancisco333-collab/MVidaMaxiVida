@@ -411,22 +411,41 @@ test('notification generation respects appointment status and user profile', asy
   assert.equal(financeNotifications.every(({ page }) => page === 'Pagamentos'), true);
 });
 
-test('the services page provides a curated two-service catalog for each specialty', async () => {
+test('the services page applies configured service tiers and consultation prices by specialty', async () => {
   const dashboard = await readFile(dashboardPath, 'utf8');
   const catalog = dashboard.match(/const DEFAULT_SERVICE_CATALOG=\[([\s\S]*?)\n\];/)[1];
   const counts = new Map();
   for (const [, specialty] of catalog.matchAll(/^\s*\['[^']*','[^']*','([^']+)',\d+\],?$/gm)) {
     counts.set(specialty, (counts.get(specialty) || 0) + 1);
   }
+  const expectedCounts = new Map([
+    ['Cardiologia', 2],
+    ['Cirurgia Geral', 2],
+    ['Dermatologia', 2],
+    ['Enfermagem', 3],
+    ['Fisioterapia', 2],
+    ['Imagiologia', 3],
+    ['Internamento', 3],
+    ['Laboratório', 3],
+    ['Odontologia', 2],
+    ['Pediatria', 2],
+    ['Saúde Materno-Infantil', 2],
+    ['Transporte', 3],
+    ['Clínica Geral', 2],
+    ['Ginecologia', 2],
+    ['Ortopedia', 2]
+  ]);
 
-  assert.match(dashboard, /rows\.push\(\{name:'Consulta',category:'Consultas',specialty/);
+  assert.match(dashboard, /if\(consultation\)rows\.push\(\{name:`Consulta de \$\{specialty\}`,isConsultation:true,category:'Consultas',specialty/);
+  assert.doesNotMatch(dashboard, /state:consultation\?\(consultation\.active===false\?'Inactivo':'Activo'\):'Preço base'/);
   assert.match(dashboard, /DEFAULT_SERVICE_CATALOG=\[/);
-  assert.match(dashboard, /\['Hemograma completo','Exames e diagnóstico laboratorial','Laboratório',500\]/);
-  assert.match(dashboard, /\['Ecocardiograma','Imagiologia','Cardiologia',2500\]/);
-  assert.match(dashboard, /\['Sessão de fisioterapia','Fisioterapia e reabilitação','Fisioterapia',800\]/);
-  assert.match(dashboard, /\['Restauração dentária','Odontologia','Odontologia',1500\]/);
-  assert.ok(counts.size >= 14);
-  assert.ok([...counts.values()].every((count) => count === 2));
+  assert.match(dashboard, /\['Hemograma e glicemia','Exames e diagnóstico laboratorial','Laboratório',500\]/);
+  assert.match(dashboard, /\['Consulta com ecocardiograma e prova de esforço','Imagiologia','Cardiologia',7500\]/);
+  assert.match(dashboard, /\['Pacote de fisioterapia - 6 sessões','Fisioterapia e reabilitação','Fisioterapia',4500\]/);
+  assert.match(dashboard, /\['Restauração ou extração dentária','Odontologia','Odontologia',3000\]/);
+  assert.match(dashboard, /const DEFAULT_CONSULTATION_PRICES=\[/);
+  assert.match(dashboard, /\['Cardiologia',1500\]/);
+  assert.deepEqual(counts, expectedCounts);
   assert.match(dashboard, /bsvc-catalog/);
   assert.match(dashboard, /Aplicar catálogo essencial/);
   assert.match(dashboard, /category:service\.category\|\|'Outros serviços'/);
@@ -437,12 +456,19 @@ test('the services page provides a curated two-service catalog for each specialt
   assert.match(dashboard, /serviceAction\('delete','Eliminar serviço','trash-2'/);
   assert.match(dashboard, /serviceAction\('toggle'/);
   assert.match(dashboard, /data-service-action/);
-  assert.match(dashboard, /Preço indisponível em Serviços/);
-  assert.match(dashboard, /consultationPrice\(doctor\)>0/);
+  const appointmentForm = dashboard.slice(dashboard.indexOf("form('Nova consulta'"), dashboard.indexOf("\n};", dashboard.indexOf("form('Nova consulta'")));
+  assert.match(appointmentForm, /sl\('Especialidade'/);
+  assert.match(appointmentForm, /id="f_service"/);
+  assert.match(appointmentForm, /Preço total \(MT\)/);
+  assert.match(appointmentForm, /serviceId:String\(service\.id\)/);
+  assert.match(appointmentForm, /SERVICES\.filter\(service=>service\.specialty===specialty&&service\.active!==false/);
+  assert.match(dashboard, /appointmentBillingDescription/);
   assert.match(dashboard, /serviceIsReferenced/);
   assert.match(dashboard, /service-show-inactive/);
   assert.match(dashboard, /active:selected\.includes\(service\)/);
-  assert.match(dashboard, /Serão mantidos dois serviços por especialidade, além da consulta/);
+  assert.match(dashboard, /active\.length!==\(definitions\.length\|\|2\)/);
+  assert.match(dashboard, /new Map\(DEFAULT_CONSULTATION_PRICES\)/);
+  assert.match(dashboard, /Os preços base das consultas serão definidos de acordo com o catálogo/);
   assert.match(dashboard, /service-page/);
   assert.match(dashboard, /\.service-page \.tit>div:first-child\{margin-right:auto\}/);
 });

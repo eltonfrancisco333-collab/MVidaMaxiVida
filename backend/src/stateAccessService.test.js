@@ -100,6 +100,7 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
     services: [
       { id: 'service-1', name: 'Fisioterapia', category: 'Fisioterapia e reabilitação', specialty: 'Fisioterapia', price: 25000, active: true },
       { id: 'service-unused', name: 'Massagem', category: 'Fisioterapia e reabilitação', specialty: 'Dermatologia', price: 18000, active: true },
+      { id: 'service-clinical-package', name: 'Check-up completo', category: 'Consultas', specialty: 'Clínica Geral', price: 4000, active: true },
       { id: 'consultation-clinical', name: 'Consulta', specialty: 'Clínica Geral', price: 52000, active: true }
     ]
   };
@@ -499,4 +500,37 @@ test('a API isola dados por perfil e aplica estados de cobrança no servidor', a
   const protectedPatientData = await (await request(administrator.token, 'GET')).json();
   assert.equal(protectedPatientData.patients[0].al, 'Alergia conhecida');
   assert.equal(protectedPatientData.patients[0].tb, 'A+');
+
+  const packageDate = maputoDate(7);
+  const packageBooking = await (await request(reception.token, 'GET')).json();
+  packageBooking.appointments.push({
+    id: 'appointment-package', serviceId: 'service-clinical-package', d: packageDate, h: '12:00',
+    pac: 'Maria Teste', med: 'Dra. Ana', esp: 'Clínica Geral', st: 'Agendada', mo: '',
+    clinicalNote: '', v: 4000
+  });
+  const packageBookingResponse = await request(reception.token, 'PUT', packageBooking);
+  const packageBookingState = await packageBookingResponse.json();
+  assert.equal(packageBookingResponse.status, 200, JSON.stringify(packageBookingState));
+  const wrongSpecialtyBooking = structuredClone(packageBookingState);
+  wrongSpecialtyBooking.appointments.push({
+    id: 'appointment-wrong-service', serviceId: 'service-1', d: maputoDate(8), h: '12:00',
+    pac: 'Maria Teste', med: 'Dra. Ana', esp: 'Clínica Geral', st: 'Agendada', mo: '',
+    clinicalNote: '', v: 25000
+  });
+  assert.equal((await request(reception.token, 'PUT', wrongSpecialtyBooking)).status, 400);
+  const doctorPackageAppointments = await (await request(doctor.token, 'GET')).json();
+  const packageAppointment = doctorPackageAppointments.appointments.find((appointment) => appointment.id === 'appointment-package');
+  assert.equal(packageAppointment.serviceId, 'service-clinical-package');
+  packageAppointment.st = 'Concluída';
+  packageAppointment.clinicalNote = 'Check-up sem alterações';
+  const packageCompletionResponse = await request(doctor.token, 'PUT', doctorPackageAppointments);
+  assert.equal(packageCompletionResponse.status, 200, await packageCompletionResponse.text());
+  const packageCharge = (await (await request(administrator.token, 'GET')).json()).payments
+    .find((payment) => payment.appointmentId === 'appointment-package');
+  assert.equal(packageCharge.v, 4000);
+  assert.equal(packageCharge.serviceId, 'service-clinical-package');
+  assert.match(packageCharge.ds, /Check-up completo/);
+  const removeBookedService = await (await request(administrator.token, 'GET')).json();
+  removeBookedService.services = removeBookedService.services.filter((service) => service.id !== 'service-clinical-package');
+  assert.equal((await request(administrator.token, 'PUT', removeBookedService)).status, 409);
 });

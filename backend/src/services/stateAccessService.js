@@ -21,13 +21,39 @@ const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const byName = (records, name) => records.find((record) => record.n === name);
 const patientReferenceFields = ['n', 'p', 't', 'ta', 'e', 'bi', 'nc', 'ca', 'st'];
 const clinicDayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+const isConsultationService = (service) => {
+  const name = service?.name?.trim().toLocaleLowerCase();
+  return name === 'consulta' || (service?.category === 'Consultas' && /^consulta de /i.test(service.name.trim()));
+};
 const consultationPriceFor = (doctor, services) => {
-  const consultationServices = services.filter((candidate) => candidate.name.trim().toLowerCase() === 'consulta'
+  const consultationServices = services.filter((candidate) => isConsultationService(candidate)
     && candidate.specialty === doctor?.s);
   const service = consultationServices.find((candidate) => candidate.active !== false) || consultationServices[0];
   if (!service) return 0;
   if (service.active === false) return 0;
   return Number(service.price) || 0;
+};
+const appointmentPriceFor = (appointment, doctor, services, requireActiveService = false) => {
+  if (appointment.esp !== doctor?.s) {
+    throw new ApiError(400, 'A especialidade seleccionada não corresponde à especialidade do médico.');
+  }
+  if (!appointment.serviceId) return consultationPriceFor(doctor, services);
+  const service = services.find((candidate) => String(candidate.id) === appointment.serviceId);
+  if (!service || service.specialty !== appointment.esp || (requireActiveService && service.active === false)) {
+    throw new ApiError(400, 'Seleccione um serviço activo da especialidade escolhida.');
+  }
+  const price = Number(service.price);
+  if (!Number.isSafeInteger(price) || price <= 0) {
+    throw new ApiError(400, 'O serviço seleccionado não tem um preço válido.');
+  }
+  return price;
+};
+const appointmentBillingDescription = (appointment, services) => {
+  if (!appointment.serviceId) return `Consulta · ${appointment.esp}`;
+  const service = services.find((candidate) => String(candidate.id) === appointment.serviceId);
+  if (!service) return `Consulta · ${appointment.esp}`;
+  const serviceName = isConsultationService(service) ? `Consulta de ${appointment.esp}` : service.name;
+  return `Consulta · ${appointment.esp} · ${serviceName}`;
 };
 
 function clinicDateTime() {
@@ -50,6 +76,12 @@ function validateAppointmentSchedule(currentAppointments, nextAppointments, empl
     if (appointment.mo !== undefined && (typeof appointment.mo !== 'string' || appointment.mo.length > 500)) {
       throw new ApiError(400, 'O motivo da consulta deve ter no máximo 500 caracteres.');
     }
+    if (appointment.serviceId !== undefined && (typeof appointment.serviceId !== 'string' || !appointment.serviceId.trim())) {
+      throw new ApiError(400, 'O serviço seleccionado para a consulta é inválido.');
+    }
+    if (previous && appointment.serviceId !== previous.serviceId) {
+      throw new ApiError(403, 'O serviço associado a uma consulta existente não pode ser alterado.');
+    }
     if (previous && previous.d === appointment.d && previous.h === appointment.h && previous.med === appointment.med) continue;
 
     const appointmentDate = new Date(`${appointment.d}T00:00:00Z`);
@@ -68,9 +100,9 @@ function validateAppointmentSchedule(currentAppointments, nextAppointments, empl
       throw new ApiError(400, 'Seleccione um médico activo para a consulta.');
     }
     if (!previous) {
-      const expectedPrice = consultationPriceFor(employee, services);
+      const expectedPrice = appointmentPriceFor(appointment, employee, services, true);
       if (!Number.isSafeInteger(expectedPrice) || expectedPrice <= 0) {
-        const consultation = services.find((candidate) => candidate.name.trim().toLowerCase() === 'consulta'
+        const consultation = services.find((candidate) => isConsultationService(candidate)
           && candidate.specialty === employee.s);
         if (consultation?.active === false) {
           throw new ApiError(400, 'A consulta desta especialidade está desactivada. Active o preço na tela Serviços.');
@@ -78,7 +110,7 @@ function validateAppointmentSchedule(currentAppointments, nextAppointments, empl
         throw new ApiError(400, 'Defina o preço da consulta na tela Serviços.');
       }
       if (Number(appointment.v) !== expectedPrice) {
-        throw new ApiError(400, 'O preço da consulta não corresponde ao preço configurado para a especialidade.');
+        throw new ApiError(400, 'O preço da consulta não corresponde ao preço do serviço seleccionado.');
       }
     }
     const schedule = Array.isArray(employee.h)
@@ -216,7 +248,7 @@ function mergeReceptionPatients(currentPatients, submittedPatients) {
 function mergeReceptionAppointments(currentAppointments, submittedAppointments, state) {
   const oldById = new Map(currentAppointments.map((appointment) => [appointment.id, appointment]));
   for (const appointment of submittedAppointments) {
-    const editableFields = new Set(['id', 'd', 'h', 'pac', 'med', 'esp', 'st', 'v', 'mo', 'clinicalNote', 'rescheduleHistory']);
+    const editableFields = new Set(['id', 'd', 'h', 'pac', 'med', 'esp', 'st', 'v', 'mo', 'clinicalNote', 'rescheduleHistory', 'serviceId']);
     if (Object.keys(appointment).some((field) => !editableFields.has(field))) {
       throw new ApiError(403, 'A recepção não pode alterar campos internos da consulta.');
     }
@@ -244,6 +276,8 @@ function mergeReceptionAppointments(currentAppointments, submittedAppointments, 
       appointment.mo = old.mo;
       if (old.clinicalNote !== undefined) appointment.clinicalNote = old.clinicalNote;
       appointment.v = old.v;
+      if (old.serviceId === undefined) delete appointment.serviceId;
+      else appointment.serviceId = old.serviceId;
       if (old.st !== appointment.st && !['Agendada', 'Cancelada', 'Faltou'].includes(appointment.st)) {
         throw new ApiError(403, 'A recepção só pode agendar, cancelar ou registar uma falta.');
       }
@@ -255,7 +289,7 @@ function mergeReceptionAppointments(currentAppointments, submittedAppointments, 
         throw new ApiError(400, 'Uma nova consulta deve começar com o estado Agendada.');
       }
       const doctor = byName(state.employees, appointment.med);
-      appointment.v = consultationPriceFor(doctor, state.services);
+      appointment.v = appointmentPriceFor(appointment, doctor, state.services, true);
       appointment.clinicalNote = '';
       appointment.rescheduleHistory = [];
     }
@@ -270,7 +304,7 @@ function mergeReceptionAppointments(currentAppointments, submittedAppointments, 
 function mergeDoctorAppointments(currentAppointments, submittedAppointments, user) {
   const oldById = new Map(currentAppointments.map((appointment) => [appointment.id, appointment]));
   for (const appointment of submittedAppointments) {
-    if (Object.keys(appointment).some((field) => !['id', 'd', 'h', 'pac', 'med', 'esp', 'st', 'v', 'mo', 'clinicalNote', 'rescheduleHistory'].includes(field))) {
+    if (Object.keys(appointment).some((field) => !['id', 'd', 'h', 'pac', 'med', 'esp', 'st', 'v', 'mo', 'clinicalNote', 'rescheduleHistory', 'serviceId'].includes(field))) {
       throw new ApiError(403, 'O perfil médico não pode alterar campos internos da consulta.');
     }
     if (appointment.med !== user.n) throw new ApiError(403, 'Só pode alterar as consultas que lhe estão atribuídas.');
@@ -278,7 +312,7 @@ function mergeDoctorAppointments(currentAppointments, submittedAppointments, use
     if (!old || appointment.pac !== old.pac || appointment.med !== old.med) {
       throw new ApiError(403, 'O perfil médico não pode criar, reatribuir nem eliminar consultas.');
     }
-    const unchangedFields = ['d', 'h', 'pac', 'med', 'esp', 'v', 'id', 'mo'];
+    const unchangedFields = ['d', 'h', 'pac', 'med', 'esp', 'v', 'id', 'mo', 'serviceId'];
     if (unchangedFields.some((field) => !same(appointment[field], old[field]))) {
       throw new ApiError(403, 'O perfil médico só pode actualizar o estado clínico da consulta.');
     }
@@ -389,15 +423,16 @@ function enforceFinancialLedger(currentPayments, submittedPayments, currentState
         && (!previousAppointment || !same(previousAppointment, appointment));
       for (const field of ['kind', 'appointmentId', 'd', 'pac', 'ds', 'v', 'med', 'serviceId']) {
         const synchronizedField = (linkedLegacyCharge && ['kind', 'appointmentId'].includes(field))
-          || (synchronizedPendingConsultation && ['d', 'pac', 'ds', 'v', 'med'].includes(field));
+          || (synchronizedPendingConsultation && ['d', 'pac', 'ds', 'v', 'med', 'serviceId'].includes(field));
         if (!synchronizedField && !same(payment[field], previous[field])) {
           throw new ApiError(403, 'Não é permitido alterar a origem nem o valor de uma cobrança existente.');
         }
       }
       if (synchronizedPendingConsultation
         && (payment.d !== appointment.d || payment.pac !== appointment.pac
-          || payment.ds !== `Consulta · ${appointment.esp}` || payment.v !== Number(appointment.v)
-          || payment.med !== appointment.med)) {
+          || payment.ds !== appointmentBillingDescription(appointment, nextState.services)
+          || payment.v !== Number(appointment.v) || payment.med !== appointment.med
+          || payment.serviceId !== appointment.serviceId)) {
         throw new ApiError(400, 'A cobrança pendente não corresponde à consulta actualizada.');
       }
       if (['Anulado', 'Estornado'].includes(previous.st) && payment.st !== previous.st) {
@@ -540,7 +575,9 @@ function enforceFinancialLedger(currentPayments, submittedPayments, currentState
       const appointment = nextState.appointments.find((candidate) => candidate.id === payment.appointmentId);
       if (!appointment || appointment.pac !== payment.pac || appointment.med !== payment.med
         || appointment.d !== payment.d || Number(appointment.v) !== payment.v
-        || appointment.st !== 'Concluída') {
+        || appointment.st !== 'Concluída'
+        || payment.ds !== appointmentBillingDescription(appointment, nextState.services)
+        || payment.serviceId !== appointment.serviceId) {
         throw new ApiError(400, 'Só é possível criar uma cobrança para uma consulta concluída.');
       }
       continue;
@@ -595,8 +632,11 @@ function preventDeletingReferencedServices(currentState, nextState) {
     if (currentState.payments.some((payment) => payment.serviceId === service.id)) {
       throw new ApiError(409, 'Um serviço usado no histórico de cobranças não pode ser eliminado; desactive-o.');
     }
+    if (currentState.appointments.some((appointment) => appointment.serviceId === String(service.id))) {
+      throw new ApiError(409, 'Um serviço associado a consultas não pode ser eliminado; desactive-o.');
+    }
     const specialty = service.specialty || 'Sem especialidade';
-    const isConsultationPrice = service.name.trim().toLowerCase() === 'consulta';
+    const isConsultationPrice = isConsultationService(service);
     if (isConsultationPrice && currentState.appointments.some((appointment) => appointment.esp === specialty)) {
       throw new ApiError(409, 'Um preço de consulta associado a consultas existentes não pode ser eliminado; desactive-o.');
     }
@@ -690,8 +730,11 @@ function applyAppointmentBillingRules(currentState, nextState) {
       if (appointment.st !== 'Agendada') {
         throw new ApiError(400, 'Uma nova consulta deve começar no estado Agendada.');
       }
-      appointment.v = consultationPriceFor(employee, nextState.services);
+      appointment.v = appointmentPriceFor(appointment, employee, nextState.services, true);
     } else {
+      if (appointment.serviceId !== previous.serviceId) {
+        throw new ApiError(403, 'O serviço associado a uma consulta existente não pode ser alterado.');
+      }
       appointment.v = previous.v;
       const allowedTransitions = {
         Agendada: ['Agendada', 'Em curso', 'Concluída', 'Cancelada', 'Faltou'],
@@ -746,12 +789,13 @@ function applyAppointmentBillingRules(currentState, nextState) {
         kind: 'Consulta',
         d: appointment.d,
         pac: appointment.pac,
-        ds: `Consulta · ${appointment.esp}`,
+        ds: appointmentBillingDescription(appointment, nextState.services),
         v: Number(appointment.v),
         st: 'Pendente',
         m: '—',
         med: appointment.med
       };
+      if (appointment.serviceId) charge.serviceId = appointment.serviceId;
       nextState.payments.push(charge);
     }
     if (charge?.st === 'Pendente') {
@@ -761,9 +805,11 @@ function applyAppointmentBillingRules(currentState, nextState) {
       } else {
         charge.d = appointment.d;
         charge.pac = appointment.pac;
-        charge.ds = `Consulta · ${appointment.esp}`;
+        charge.ds = appointmentBillingDescription(appointment, nextState.services);
         charge.v = Number(appointment.v);
         charge.med = appointment.med;
+        if (appointment.serviceId) charge.serviceId = appointment.serviceId;
+        else delete charge.serviceId;
       }
     }
   }

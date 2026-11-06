@@ -262,7 +262,7 @@ button:focus-visible,a:focus-visible{outline:3px solid color-mix(in srgb,var(--g
 </section>
 <section class="page off service-page" id="v-servicos">
   <div class="tit"><div><h1>Serviços e preços</h1><p class="hs">Gestão de serviços clínicos, preços e especialidades.</p></div><div class="els"><button class="btn o" id="bsvc-catalog"><i data-lucide="list-filter"></i>Aplicar catálogo essencial</button><button class="btn" id="bsvc-add"><i data-lucide="plus"></i>Novo Serviço</button></div></div>
-  <div class="service-intro"><i data-lucide="badge-info"></i><span>O catálogo essencial mantém a consulta e dois serviços por especialidade. Preços sugeridos devem ser revistos pela clínica antes de serem cobrados; serviços antigos são preservados no histórico.</span></div>
+  <div class="service-intro"><i data-lucide="badge-info"></i><span>O catálogo mantém os níveis de preço definidos para cada especialidade. Serviços antigos são preservados no histórico; confirme os valores com a clínica antes de os cobrar.</span></div>
   <div class="service-summary" id="service-summary"></div>
   <div class="card service-card" id="tsvc"></div>
 </section>
@@ -338,6 +338,9 @@ let PG=[];
 let SERVICES=[];
 const nextPaymentId=()=>Math.max(0,...PG.map(x=>Number(x.id)||0))+1;
 const paymentForAppointment=x=>{const linked=PG.find(p=>p.appointmentId&&p.appointmentId===x.id);if(linked)return linked;const legacy=PG.filter(p=>!p.appointmentId&&p.kind!=='Tratamento'&&p.pac===x.pac&&p.med===x.med&&p.d===x.d&&/consulta/i.test(p.ds||''));return legacy.length===1?legacy[0]:undefined};
+const isConsultationService=service=>service?.name?.trim().toLowerCase()==='consulta'||(service?.category==='Consultas'&&/^consulta de /i.test(service.name.trim()));
+const appointmentServiceName=appointment=>{const service=SERVICES.find(item=>item.id===appointment.serviceId);return !service||isConsultationService(service)?`Consulta de ${appointment.esp}`:service.name};
+const appointmentBillingDescription=appointment=>appointment.serviceId?`Consulta · ${appointment.esp} · ${appointmentServiceName(appointment)}`:`Consulta · ${appointment.esp}`;
 function syncAppointmentPayment(appointment){
   if(USER&&USER.pf!=='Administrador')return;
   let payment=paymentForAppointment(appointment);
@@ -355,7 +358,7 @@ function syncAppointmentPayment(appointment){
   if(appointment.st!=='Concluída')return payment;
   if(!payment){
     const employee=FU.find(x=>x.n===appointment.med);
-    payment={id:nextPaymentId(),appointmentId:appointment.id,kind:'Consulta',d:appointment.d,pac:appointment.pac,ds:`Consulta · ${appointment.esp}`,v:Number(appointment.v)||Number(employee?.p)||30000,st:'Pendente',m:'—',med:appointment.med};
+    payment={id:nextPaymentId(),appointmentId:appointment.id,kind:'Consulta',d:appointment.d,pac:appointment.pac,ds:appointmentBillingDescription(appointment),v:Number(appointment.v)||Number(employee?.p)||30000,st:'Pendente',m:'—',med:appointment.med,...(appointment.serviceId?{serviceId:appointment.serviceId}:{})};
     PG.push(payment);
   }
   if(payment?.st==='Pendente'){
@@ -365,8 +368,9 @@ function syncAppointmentPayment(appointment){
     payment.d=appointment.d;
     payment.pac=appointment.pac;
     payment.med=appointment.med;
-    payment.ds=`Consulta · ${appointment.esp}`;
+    payment.ds=appointmentBillingDescription(appointment);
     payment.v=Number(appointment.v)||Number(employee?.p)||30000;
+    if(appointment.serviceId)payment.serviceId=appointment.serviceId;else delete payment.serviceId;
   }
   return payment;
 }
@@ -432,7 +436,7 @@ const norm=s=>String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u03
 function rin(){const ac=PA.filter(x=>x.st==='Activo').length,md=FU.filter(x=>x.f==='Médico'&&x.st==='Activo').length,co=CO.filter(x=>x.d>=TODAY&&(x.st==='Agendada'||x.st==='Em curso')&&ownAppointment(x)).length,rc=PG.filter(x=>x.st==='Pago').reduce((a,x)=>a+x.v,0);
 const k=isDoctor()?[['Minhas consultas',CO.filter(ownAppointment).length,'Consultas da sua agenda','calendar-days','o'],['Agendadas',co,'Marcadas e por realizar','calendar-days','b']]:[['Pacientes',ac,'Pacientes activos','users','b'],['Médicos',md,'Em actividade','stethoscope','g'],['Consultas',co,'Marcadas e por realizar','calendar-days','o'],['Receita',mt(rc),'Total arrecadado','wallet','v']];
 $('ik').innerHTML=k.map(x=>`<div class="card ikc"><div class="ikt"><span class="ico ${x[4]}"><i data-lucide="${x[3]}"></i></span><div><small>${x[0]}</small><b class="n${x[4]}">${x[1]}</b></div></div><p class="cp">${x[2]}</p></div>`).join('');
-const r=[];CO.forEach((x,i)=>{if(ownAppointment(x)&&x.d>=TODAY&&(x.st==='Agendada'||x.st==='Em curso')){const charge=paymentForAppointment(x);r.push({i,k:x.d+x.h,c:[br(x.d),x.h,x.pac,x.esp,x.med,mt(Number(x.v)||Number(FU.find(f=>f.n===x.med)?.p)||30000),tag(charge?.st||'—'),tag(x.st)]})}});r.sort((a,b)=>a.k<b.k?-1:1);
+const r=[];CO.forEach((x,i)=>{if(ownAppointment(x)&&x.d>=TODAY&&(x.st==='Agendada'||x.st==='Em curso')){const charge=paymentForAppointment(x);r.push({i,k:x.d+x.h,c:[br(x.d),x.h,x.pac,`${htmlSafe(x.esp)}<small>${htmlSafe(appointmentServiceName(x))}</small>`,x.med,mt(Number(x.v)||Number(FU.find(f=>f.n===x.med)?.p)||30000),tag(charge?.st||'—'),tag(x.st)]})}});r.sort((a,b)=>a.k<b.k?-1:1);
 tbl('tin',['Data','Hora','Paciente','Especialidade','Médico','Valor','Pagamento','Estado'],r,6)}
 RR.tin=rin;
 /* ---------- PACIENTES ---------- */
@@ -526,7 +530,7 @@ function rcal(){Q('#cmodes .sg').forEach(b=>b.classList.toggle('on',b.dataset.m=
 if(cm==='mes'){const y=+cur.slice(0,4),mo=+cur.slice(5,7)-1,f=iso(new Date(Date.UTC(y,mo,1))),off=wd(f),nd=new Date(Date.UTC(y,mo+1,0)).getUTCDate(),rows=Math.ceil((off+nd)/7);t=MN[mo]+' '+y;h='<div class="mes">'+DC.map(d=>`<b>${d}</b>`).join('');for(let k=0;k<rows*7;k++){const d=add(f,k-off),o=d.slice(5,7)!==cur.slice(5,7);h+=`<div${d===TODAY?' style="background:var(--gl)"':''}><span${o?' class="m"':''}>${+d.slice(8)}</span>${o?'':evs(d).map(evh).join('')}</div>`}h+='</div>'}
 else{const s=cm==='sem'?add(cur,-wd(cur)):cur,n=cm==='sem'?7:1;t=cm==='sem'?`Semana de ${br(s).slice(0,5)} a ${br(add(s,6)).slice(0,5)}`:`${DW[wd(cur)]}, ${+cur.slice(8)} de ${MN[+cur.slice(5,7)-1]} de ${cur.slice(0,4)}`;h='<div class="dl">';for(let k=0;k<n;k++){const d=add(s,k),e=evs(d);h+=`<div class="dr"><b>${DW[wd(d)]} ${br(d).slice(0,5)}</b><div class="els">${e.length?e.map(evh).join(''):'<span style="color:var(--mu);font-size:12.5px">Sem consultas</span>'}</div></div>`}h+='</div>'}
 $('ct').innerHTML='<i data-lucide="calendar"></i>'+t;$('cbody').innerHTML=h;ic()}
-const crows=(f)=>{const r=[];CO.forEach((x,i)=>{if(cok(x)&&ownAppointment(x)&&f(x)){const charge=paymentForAppointment(x),actions=isDoctor()?(['Agendada','Em curso'].includes(x.st)?['v','e']:['v']):USER?.pf==='Recepção'?(x.st==='Agendada'?['v','h','e']:['v','h']):['v','h',...(x.st==='Agendada'||x.st==='Em curso'?['e']:[])];r.push({i,k:x.d+x.h,c:[br(x.d),x.h,x.pac,x.med,x.esp,mt(Number(x.v)||Number(FU.find(z=>z.n===x.med)?.p)||30000),tag(charge?.st||'—'),tag(x.st),acts(actions)]})}});return r.sort((a,b)=>a.k<b.k?-1:a.k>b.k?1:0)};
+const crows=(f)=>{const r=[];CO.forEach((x,i)=>{if(cok(x)&&ownAppointment(x)&&f(x)){const charge=paymentForAppointment(x),actions=isDoctor()?(['Agendada','Em curso'].includes(x.st)?['v','e']:['v']):USER?.pf==='Recepção'?(x.st==='Agendada'?['v','h','e']:['v','h']):['v','h',...(x.st==='Agendada'||x.st==='Em curso'?['e']:[])];r.push({i,k:x.d+x.h,c:[br(x.d),x.h,x.pac,x.med,`${htmlSafe(x.esp)}<small>${htmlSafe(appointmentServiceName(x))}</small>`,mt(Number(x.v)||Number(FU.find(z=>z.n===x.med)?.p)||30000),tag(charge?.st||'—'),tag(x.st),acts(actions)]})}});return r.sort((a,b)=>a.k<b.k?-1:a.k>b.k?1:0)};
 const CH=['Data','Hora','Paciente','Médico','Especialidade','Valor','Pagamento','Estado','Ações'];
 function renderAppointmentEmpty(id,title,description,buttonLabel,onClick){
   const target=$(id);
@@ -547,7 +551,7 @@ function rco(){
   else renderAppointmentEmpty('tco2','Sem agendamentos futuros','Não existem consultas futuras atribuídas a si. As consultas concluídas ficam disponíveis na Lista.');
 }
 RR.tco1=RR.tco2=RR.tco3=rco;
-const vco=i=>{const x=CO[i],charge=paymentForAppointment(x),value=Number(x.v)||Number(FU.find(f=>f.n===x.med)?.p)||30000;dm('Detalhes da Consulta','calendar-days',x.pac,[['Data',br(x.d)],['Hora',x.h],['Médico',x.med]],[['Especialidade',x.esp],['Valor',mt(value)],['Estado',x.st],['Pagamento',charge?.st||'Sem cobrança']],[['Resumo',kvg([['Paciente',x.pac],['Médico',x.med],['Data',br(x.d)],['Hora',x.h],['Especialidade',x.esp],['Valor',mt(value)],['Estado da consulta',x.st],['Estado do pagamento',charge?.st||'Sem cobrança']])],['Motivo',`<div class="tp" style="color:var(--mu)">${htmlSafe(x.mo)||'Sem motivo registado.'}</div>`],['Observações',nobs()]])};
+const vco=i=>{const x=CO[i],charge=paymentForAppointment(x),value=Number(x.v)||Number(FU.find(f=>f.n===x.med)?.p)||30000;dm('Detalhes da Consulta','calendar-days',x.pac,[['Data',br(x.d)],['Hora',x.h],['Médico',x.med]],[['Especialidade',x.esp],['Serviço',appointmentServiceName(x)],['Valor total',mt(value)],['Estado',x.st],['Pagamento',charge?.st||'Sem cobrança']],[['Resumo',kvg([['Paciente',x.pac],['Médico',x.med],['Data',br(x.d)],['Hora',x.h],['Especialidade',x.esp],['Serviço',appointmentServiceName(x)],['Valor total',mt(value)],['Estado da consulta',x.st],['Estado do pagamento',charge?.st||'Sem cobrança']])],['Motivo',`<div class="tp" style="color:var(--mu)">${htmlSafe(x.mo)||'Sem motivo registado.'}</div>`],['Observações',nobs()]])};
 const eco=i=>{
   const x=CO[i];
   if(isDoctor()){
@@ -607,19 +611,23 @@ const eco=i=>{
 const nco=()=>{
   if(isDoctor()){toast('O perfil Médico não pode criar consultas.');return}
   if(!['Administrador','Recepção'].includes(USER?.pf)){toast('O seu perfil não pode agendar consultas.');return}
-  const md=FU.filter(x=>x.f==='Médico'&&x.st==='Activo'),pc=PA.filter(x=>x.st==='Activo');
-  form('Nova consulta',`<div class="fg">${sl('Paciente',['',...pc.map(x=>x.n)],'','f_p')}${sl('Médico',['',...md.map(x=>x.n+' · '+x.s)],'','f_m')}${fi('Data',TODAY,'date','f_d')}<label class="fl">Hora livre<select class="sel" id="f_h"><option value="">Seleccione o médico</option></select></label><label class="fl">Preço da consulta (MT)<input class="busca" id="f_v" disabled value=""></label><label class="fl w">Motivo (opcional)<textarea class="busca" id="f_mo" rows="2" maxlength="500"></textarea></label></div>`,()=>{
-    const p=$('f_p').value,m=$('f_m').value,d=$('f_d').value,h=$('f_h').value,n=m.split(' · '),doctor=md.find(x=>x.n===n[0]);
-    if(!p||!doctor||!d||!h){toast('Escolha o paciente, o médico, uma data futura e uma hora disponível.');return false}
+  const md=FU.filter(x=>x.f==='Médico'&&x.st==='Activo'),pc=PA.filter(x=>x.st==='Activo'),specialties=[...new Set(md.map(doctor=>doctor.s).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt')),option=(value,label,selected=false)=>`<option value="${htmlSafe(value)}"${selected?' selected':''}>${htmlSafe(label)}</option>`;
+  form('Nova consulta',`<div class="fg">${sl('Paciente',['',...pc.map(x=>x.n)],'','f_p')}${sl('Especialidade',['',...specialties],'','f_esp')}<label class="fl">Médico<select class="sel" id="f_m"><option value="">Seleccione a especialidade</option></select></label><label class="fl">Serviço<select class="sel" id="f_service"><option value="">Seleccione a especialidade</option></select></label>${fi('Data',TODAY,'date','f_d')}<label class="fl">Hora livre<select class="sel" id="f_h"><option value="">Seleccione o médico</option></select></label><label class="fl">Preço total (MT)<input class="busca" id="f_v" disabled value=""></label><label class="fl w">Motivo (opcional)<textarea class="busca" id="f_mo" rows="2" maxlength="500"></textarea></label></div>`,()=>{
+    const p=$('f_p').value,specialty=$('f_esp').value,doctor=md.find(x=>x.n===$('f_m').value&&x.s===specialty),service=SERVICES.find(x=>String(x.id)===$('f_service').value),d=$('f_d').value,h=$('f_h').value;
+    if(!p||!specialty||!doctor||!service||!d||!h){toast('Escolha o paciente, a especialidade, o médico, o serviço, uma data futura e uma hora disponível.');return false}
     if(d<TODAY||(d===TODAY&&h<=hhmm())||!slots(doctor.n,d,'').includes(h)){toast('Escolha uma data futura e um horário disponível do médico.');return false}
-    const v=consultationPrice(doctor);
-    if(!Number.isSafeInteger(v)||v<=0){toast('Defina o preço desta especialidade na tela Serviços antes de agendar.');return false}
-    const appointment={id:`consulta-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,d,h,pac:p,med:n[0],esp:n[1],st:'Agendada',mo:V('f_mo'),v};
-    CO.push(appointment);syncAppointmentPayment(appointment);lg('Marcação de consulta',`Consulta de ${p} marcada por ${mt(v)}`);rco();rin();rpg();toast('Consulta agendada')
+    const v=Number(service.price);
+    if(service.active===false||service.specialty!==specialty||!Number.isSafeInteger(v)||v<=0){toast('Seleccione um serviço activo com preço válido para esta especialidade.');return false}
+    const appointment={id:`consulta-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,serviceId:String(service.id),d,h,pac:p,med:doctor.n,esp:specialty,st:'Agendada',mo:V('f_mo'),v};
+    CO.push(appointment);syncAppointmentPayment(appointment);lg('Marcação de consulta',`${appointmentServiceName(appointment)} de ${p} marcada por ${mt(v)}`);rco();rin();rpg();toast('Consulta agendada')
   },'Agendar',1);
   $('f_d').min=TODAY;
-  const updateSlots=()=>{const m=$('f_m').value.split(' · ')[0],doctor=md.find(x=>x.n===m),o=m&&doctor&&consultationPrice(doctor)>0?slots(m,$('f_d').value,''):[];$('f_h').disabled=!!m&&(!doctor||consultationPrice(doctor)<=0);$('f_h').innerHTML=!m?'<option value="">Seleccione o médico</option>':!doctor||consultationPrice(doctor)<=0?'<option value="">Preço indisponível em Serviços</option>':o.length?o.map(s=>`<option>${s}</option>`).join(''):'<option value="">Sem horários livres</option>'};
-  $('f_m').onchange=()=>{updateSlots();const doctor=md.find(x=>x.n===$('f_m').value.split(' · ')[0]);if(doctor){const price=consultationPrice(doctor);$('f_v').value=price?mt(price):'Preço indisponível em Serviços'}};
+  const updateServices=()=>{const specialty=$('f_esp').value,available=SERVICES.filter(service=>service.specialty===specialty&&service.active!==false&&Number.isSafeInteger(Number(service.price))&&Number(service.price)>0);$('f_service').innerHTML=specialty?available.length?`<option value="">Seleccione o serviço</option>${available.map(service=>option(String(service.id),`${isConsultationService(service)?`Consulta de ${specialty}`:service.name} · ${mt(Number(service.price))}`)).join('')}`:'<option value="">Sem serviços com preço definido</option>':'<option value="">Seleccione a especialidade</option>';updatePrice()};
+  const updatePrice=()=>{const service=SERVICES.find(item=>String(item.id)===$('f_service').value);$('f_v').value=service?mt(Number(service.price)):''};
+  const updateSlots=()=>{const doctor=md.find(x=>x.n===$('f_m').value&&x.s===$('f_esp').value),o=doctor?slots(doctor.n,$('f_d').value,''):[];$('f_h').disabled=!doctor;$('f_h').innerHTML=!doctor?'<option value="">Seleccione o médico</option>':o.length?o.map(s=>option(s,s)).join(''):'<option value="">Sem horários livres</option>'};
+  $('f_esp').onchange=()=>{const specialty=$('f_esp').value,doctors=md.filter(doctor=>doctor.s===specialty);$('f_m').innerHTML=specialty?doctors.length?`<option value="">Seleccione o médico</option>${doctors.map(doctor=>option(doctor.n,doctor.n)).join('')}`:'<option value="">Sem médicos activos</option>':'<option value="">Seleccione a especialidade</option>';updateServices();updateSlots()};
+  $('f_m').onchange=updateSlots;
+  $('f_service').onchange=updatePrice;
   $('f_d').onchange=updateSlots
 };
 const dco=()=>toast('As consultas não podem ser eliminadas; cancele ou marque a falta para preservar o histórico.');
@@ -729,103 +737,132 @@ form('Novo pagamento',`<div class="fg">${sl('Consulta ou tratamento',['',...p.ma
 const htmlSafe=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const SERVICE_CATEGORIES=['Exames e diagnóstico laboratorial','Imagiologia','Procedimentos de enfermagem','Vacinação e saúde preventiva','Pequenas cirurgias e procedimentos','Fisioterapia e reabilitação','Odontologia','Outros serviços','Consultas'];
 const DEFAULT_SERVICE_CATALOG=[
+  ['Consulta com electrocardiograma (ECG)','Imagiologia','Cardiologia',3500],
+  ['Consulta com ecocardiograma e prova de esforço','Imagiologia','Cardiologia',7500],
+  ['Cirurgia programada de média complexidade (hérnia, apendicectomia)','Pequenas cirurgias e procedimentos','Cirurgia Geral',25000],
+  ['Pequena cirurgia ambulatória com anestesia local (abcesso, lipoma, sutura)','Pequenas cirurgias e procedimentos','Cirurgia Geral',6500],
+  ['Biópsia de pele com análise','Pequenas cirurgias e procedimentos','Dermatologia',6000],
+  ['Consulta com dermatoscopia ou crioterapia','Pequenas cirurgias e procedimentos','Dermatologia',2500],
+  ['Penso simples ou injecção','Procedimentos de enfermagem','Enfermagem',300],
+  ['Soroterapia e medicação endovenosa','Procedimentos de enfermagem','Enfermagem',800],
+  ['Curativos complexos ou cuidados ao domicílio','Procedimentos de enfermagem','Enfermagem',2000],
+  ['Pacote de fisioterapia - 12 sessões com eletroterapia e reabilitação pós-cirúrgica','Fisioterapia e reabilitação','Fisioterapia',9000],
+  ['Pacote de fisioterapia - 6 sessões','Fisioterapia e reabilitação','Fisioterapia',4500],
+  ['Ecografia abdominal ou pélvica','Imagiologia','Imagiologia',1800],
+  ['Ecografia Doppler ou mamografia','Imagiologia','Imagiologia',6500],
+  ['Raio-X simples','Imagiologia','Imagiologia',700],
+  ['Enfermaria comum - diária','Outros serviços','Internamento',1500],
+  ['Quarto duplo com casa de banho - diária','Outros serviços','Internamento',3500],
+  ['Quarto individual com monitorização contínua - diária','Outros serviços','Internamento',7000],
+  ['Hemograma e glicemia','Exames e diagnóstico laboratorial','Laboratório',500],
+  ['Função renal, função hepática e perfil lipídico','Exames e diagnóstico laboratorial','Laboratório',2500],
+  ['Perfil hormonal e marcadores tumorais','Exames e diagnóstico laboratorial','Laboratório',6000],
+  ['Restauração ou extração dentária','Odontologia','Odontologia',3000],
+  ['Tratamento de canal ou prótese dentária','Odontologia','Odontologia',12000],
+  ['Observação de urgência pediátrica - 6 horas com monitorização','Outros serviços','Pediatria',5500],
+  ['Consulta pediátrica com nebulização e teste rápido de malária','Consultas','Pediatria',2200],
+  ['Consulta pré-natal com ecografia obstétrica','Consultas','Saúde Materno-Infantil',2500],
+  ['Pacote pré-natal completo com análises e ecografias','Outros serviços','Saúde Materno-Infantil',15000],
+  ['Ambulância medicalizada com médico para outra província','Outros serviços','Transporte',12000],
+  ['Ambulância com enfermeiro dentro da província','Outros serviços','Transporte',4000],
+  ['Transporte de paciente dentro da cidade','Outros serviços','Transporte',1500],
   ['Check-up geral','Consultas','Clínica Geral',1500],
   ['Visita domiciliária','Outros serviços','Clínica Geral',2000],
-  ['Electrocardiograma (ECG)','Imagiologia','Cardiologia',800],
-  ['Ecocardiograma','Imagiologia','Cardiologia',2500],
-  ['Vacinação','Vacinação e saúde preventiva','Pediatria',400],
-  ['Hemograma completo','Exames e diagnóstico laboratorial','Pediatria',500],
   ['Ecografia obstétrica','Imagiologia','Ginecologia',1200],
   ['Planeamento familiar','Vacinação e saúde preventiva','Ginecologia',300],
-  ['Pensos e curativos','Procedimentos de enfermagem','Dermatologia',200],
-  ['Sutura de ferida','Pequenas cirurgias e procedimentos','Dermatologia',600],
   ['Raio-X','Imagiologia','Ortopedia',1000],
   ['Sessão de fisioterapia','Fisioterapia e reabilitação','Ortopedia',800],
-  ['Hemograma completo','Exames e diagnóstico laboratorial','Laboratório',500],
-  ['Glicemia','Exames e diagnóstico laboratorial','Laboratório',200],
-  ['Ecografia abdominal','Imagiologia','Imagiologia',1200],
-  ['Raio-X','Imagiologia','Imagiologia',1000],
-  ['Injecção / administração de medicação','Procedimentos de enfermagem','Enfermagem',150],
-  ['Pensos e curativos','Procedimentos de enfermagem','Enfermagem',200],
-  ['Consulta pré-natal','Vacinação e saúde preventiva','Saúde Materno-Infantil',600],
-  ['Vacinação','Vacinação e saúde preventiva','Saúde Materno-Infantil',400],
-  ['Drenagem de abcesso','Pequenas cirurgias e procedimentos','Cirurgia Geral',1500],
-  ['Remoção de pequeno quisto','Pequenas cirurgias e procedimentos','Cirurgia Geral',2000],
-  ['Sessão de fisioterapia','Fisioterapia e reabilitação','Fisioterapia',800],
-  ['Reabilitação pós-lesão','Fisioterapia e reabilitação','Fisioterapia',1000],
-  ['Limpeza dentária','Odontologia','Odontologia',1200],
-  ['Restauração dentária','Odontologia','Odontologia',1500],
-  ['Internamento / observação (diária)','Outros serviços','Internamento',2500],
-  ['Relatório / declaração médica','Outros serviços','Internamento',500],
-  ['Ambulância / transporte de doentes','Outros serviços','Transporte',3000],
-  ['Visita domiciliária','Outros serviços','Transporte',2000]
+];
+const DEFAULT_CONSULTATION_PRICES=[
+  ['Cardiologia',1500],
+  ['Cirurgia Geral',1200],
+  ['Dermatologia',1000],
+  ['Fisioterapia',800],
+  ['Odontologia',1000],
+  ['Pediatria',1000],
+  ['Saúde Materno-Infantil',800]
 ];
 const serviceForm=(service={name:'Consulta',category:'Consultas',specialty:ESPS[0],price:''})=>`<div class="fg">${fi('Nome do serviço',htmlSafe(service.name),'text','svc-name')}${sl('Categoria',[...new Set([...SERVICE_CATEGORIES,...SERVICES.map(item=>item.category).filter(Boolean)])],service.category||'Outros serviços','svc-category')}${sl('Especialidade',[...new Set([...ESPS,...FU.filter(employee=>employee.f==='Médico').map(employee=>employee.s).filter(Boolean),...SERVICES.map(item=>item.specialty).filter(Boolean)])],service.specialty||ESPS[0],'svc-specialty')}<label class="fl">Preço (MT)<input class="busca" id="svc-price" type="number" min="1" step="1" value="${service.price||''}"></label></div>`;
-const consultationPrice=doctor=>{const configured=SERVICES.filter(service=>service.name.trim().toLowerCase()==='consulta'&&service.specialty===doctor.s),service=configured.find(item=>item.active!==false)||configured[0];if(!service)return 0;return service.active===false?0:Number(service.price)||0};
-const serviceIsReferenced=service=>PG.some(payment=>payment.serviceId===service.id)||(service.name.trim().toLowerCase()==='consulta'&&CO.some(appointment=>appointment.esp===(service.specialty||'Sem especialidade')));
+const consultationPrice=doctor=>{const configured=SERVICES.filter(service=>isConsultationService(service)&&service.specialty===doctor.s),service=configured.find(item=>item.active!==false)||configured[0];if(!service)return 0;return service.active===false?0:Number(service.price)||0};
+const serviceIsReferenced=service=>PG.some(payment=>payment.serviceId===service.id)||CO.some(appointment=>appointment.serviceId===service.id)||(isConsultationService(service)&&CO.some(appointment=>appointment.esp===(service.specialty||'Sem especialidade')));
 let showInactiveServices=false;
 function renderServices(){
   const canManage=ADM(),specialties=new Set([...ESPS,...SERVICES.map(service=>service.specialty||'Sem especialidade')]),rows=[];
   for(const specialty of specialties){
     const doctors=FU.filter(employee=>employee.f==='Médico'&&employee.s===specialty&&employee.st==='Activo');
-    let consultationIndex=SERVICES.findIndex(service=>service.active!==false&&service.name.trim().toLowerCase()==='consulta'&&(service.specialty||'Sem especialidade')===specialty);
-    if(consultationIndex<0)consultationIndex=SERVICES.findIndex(service=>service.name.trim().toLowerCase()==='consulta'&&(service.specialty||'Sem especialidade')===specialty);
+    let consultationIndex=SERVICES.findIndex(service=>service.active!==false&&isConsultationService(service)&&(service.specialty||'Sem especialidade')===specialty);
+    if(consultationIndex<0)consultationIndex=SERVICES.findIndex(service=>isConsultationService(service)&&(service.specialty||'Sem especialidade')===specialty);
     const consultation=SERVICES[consultationIndex];
-    rows.push({name:'Consulta',category:'Consultas',specialty,professionals:doctors.map(doctor=>doctor.n).join(', ')||'Sem médico associado',price:consultation?Number(consultation.price):doctors.length===1?Number(doctors[0].p)||0:0,state:consultation?(consultation.active===false?'Inactivo':'Activo'):'Preço base',index:consultationIndex<0?undefined:consultationIndex,referenced:consultation?serviceIsReferenced(consultation):false});
-    SERVICES.forEach((service,index)=>{if((service.specialty||'Sem especialidade')!==specialty||service.name.trim().toLowerCase()==='consulta')return;rows.push({name:service.name,category:service.category||'Outros serviços',specialty,professionals:doctors.map(doctor=>doctor.n).join(', ')||'Sem médico associado',price:service.price,state:service.active===false?'Inactivo':'Activo',index,referenced:serviceIsReferenced(service)})});
+    if(consultation)rows.push({name:`Consulta de ${specialty}`,isConsultation:true,category:'Consultas',specialty,professionals:doctors.map(doctor=>doctor.n).join(', ')||'Sem médico associado',price:Number(consultation.price),state:consultation.active===false?'Inactivo':'Activo',index:consultationIndex,referenced:serviceIsReferenced(consultation)});
+    SERVICES.forEach((service,index)=>{if((service.specialty||'Sem especialidade')!==specialty||isConsultationService(service))return;rows.push({name:service.name,category:service.category||'Outros serviços',specialty,professionals:doctors.map(doctor=>doctor.n).join(', ')||'Sem médico associado',price:service.price,state:service.active===false?'Inactivo':'Activo',index,referenced:serviceIsReferenced(service)})});
   }
   rows.sort((a,b)=>a.category.localeCompare(b.category,'pt')||a.specialty.localeCompare(b.specialty,'pt')||a.name.localeCompare(b.name,'pt'));
-  const activeServices=SERVICES.filter(service=>service.active!==false).length,configuredPrices=rows.filter(row=>row.name==='Consulta'&&row.price>0&&row.state==='Activo').length;
+  const activeServices=SERVICES.filter(service=>service.active!==false).length,configuredPrices=rows.filter(row=>row.isConsultation&&row.price>0&&row.state==='Activo').length;
   $('service-summary').innerHTML=`<div class="service-stat"><span class="service-stat-icon"><i data-lucide="stethoscope"></i></span><div><b>${specialties.size}</b><small>Especialidades</small></div></div><div class="service-stat"><span class="service-stat-icon"><i data-lucide="badge-check"></i></span><div><b>${configuredPrices}</b><small>Preços de consulta activos</small></div></div><div class="service-stat"><span class="service-stat-icon"><i data-lucide="layers-3"></i></span><div><b>${activeServices}</b><small>Serviços activos</small></div></div>`;
-  const activeBySpecialty=specialty=>SERVICES.filter(service=>(service.specialty||'Sem especialidade')===specialty&&service.name.trim().toLowerCase()!=='consulta'&&service.active!==false);
+  const activeBySpecialty=specialty=>SERVICES.filter(service=>(service.specialty||'Sem especialidade')===specialty&&!isConsultationService(service)&&service.active!==false);
   const needsCuration=[...specialties].some(specialty=>{
     const active=activeBySpecialty(specialty),definitions=DEFAULT_SERVICE_CATALOG.filter(([, ,entrySpecialty])=>entrySpecialty===specialty);
-    return active.length!==2||(definitions.length===2&&definitions.some(([name])=>!active.some(service=>service.name.trim().toLowerCase()===name.toLowerCase())));
+    return active.length!==(definitions.length||2)||definitions.some(([name])=>!active.some(service=>service.name.trim().toLowerCase()===name.toLowerCase()));
   });
   const visibleRows=showInactiveServices?rows:rows.filter(row=>row.state!=='Inactivo');
   const query=norm(TQ.tsvc||''),filteredRows=query?visibleRows.filter(row=>norm([row.name,row.category,row.specialty,row.professionals,row.price?mt(row.price):'',row.state].join(' ')).includes(query)):visibleRows;
   const serviceAction=(action,label,icon,index,specialty)=>`<button type="button" class="ia" data-service-action="${action}"${index===undefined?'':` data-i="${index}"`} data-specialty="${htmlSafe(specialty)}" title="${label}" aria-label="${label}"><i data-lucide="${icon}"></i></button>`;
-  const body=filteredRows.map(row=>`<tr><td><strong>${htmlSafe(row.name)}</strong>${row.state==='Preço base'?'<small class="service-source">Preço base do médico</small>':''}</td><td>${htmlSafe(row.category)}</td><td>${htmlSafe(row.specialty)}</td><td>${htmlSafe(row.professionals)}</td><td class="service-price">${row.price?mt(row.price):'Por definir'}</td><td>${row.state==='Preço base'?'<span class="tag t-o">Preço base</span>':tag(row.state)}</td><td><div class="acc service-actions">${serviceAction('view','Ver detalhes','eye',row.index,row.specialty)}${canManage&&row.index!==undefined?`${serviceAction('edit','Editar serviço','pencil',row.index,row.specialty)}${serviceAction('toggle',row.state==='Inactivo'?'Activar':'Desactivar','power',row.index,row.specialty)}${row.referenced?'':serviceAction('delete','Eliminar serviço','trash-2',row.index,row.specialty)}`:canManage&&row.name==='Consulta'?`${row.price>0?serviceAction('toggle','Desactivar preço','power',undefined,row.specialty):''}${serviceAction('price','Definir preço','pencil',undefined,row.specialty)}`:''}</div></td></tr>`).join('');
+  const body=filteredRows.map(row=>`<tr><td><strong>${htmlSafe(row.name)}</strong>${row.state==='Preço base'?'<small class="service-source">Preço base do médico</small>':''}</td><td>${htmlSafe(row.category)}</td><td>${htmlSafe(row.specialty)}</td><td>${htmlSafe(row.professionals)}</td><td class="service-price">${row.price?mt(row.price):'Por definir'}</td><td>${row.state==='Preço base'?'<span class="tag t-o">Preço base</span>':tag(row.state)}</td><td><div class="acc service-actions">${serviceAction('view','Ver detalhes','eye',row.index,row.specialty)}${canManage&&row.index!==undefined?`${serviceAction('edit','Editar serviço','pencil',row.index,row.specialty)}${serviceAction('toggle',row.state==='Inactivo'?'Activar':'Desactivar','power',row.index,row.specialty)}${row.referenced?'':serviceAction('delete','Eliminar serviço','trash-2',row.index,row.specialty)}`:canManage&&row.isConsultation?`${row.price>0?serviceAction('toggle','Desactivar preço','power',undefined,row.specialty):''}${serviceAction('price','Definir preço','pencil',undefined,row.specialty)}`:''}</div></td></tr>`).join('');
   $('bsvc-add').style.display=canManage?'':'none';
   $('bsvc-catalog').style.display=canManage&&needsCuration?'':'none';
   $('tsvc').innerHTML=`<div class="table-tools"><label class="table-search"><i data-lucide="search"></i><input class="busca" type="text" data-table-search="tsvc" value="${htmlSafe(TQ.tsvc||'')}" placeholder="Pesquisar nesta tabela..." aria-label="Pesquisar serviços"></label><label class="service-inactive-toggle"><input type="checkbox" id="service-show-inactive"${showInactiveServices?' checked':''}>Mostrar inactivos</label><span>${filteredRows.length} de ${visibleRows.length} serviços</span></div><div class="wrap"><table class="service-table"><thead><tr><th>Serviço</th><th>Categoria</th><th>Especialidade</th><th>Profissionais associados</th><th>Preço</th><th>Estado</th><th>Ações</th></tr></thead><tbody>${body||`<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:28px">${query?'Nenhum serviço corresponde à pesquisa.':!showInactiveServices&&rows.some(row=>row.state==='Inactivo')?'Não há serviços activos; marque “Mostrar inactivos” para consultar o histórico.':'Ainda não há serviços nem especialidades registados.'}</td></tr>`}</tbody></table></div>`;lab();ic();$('service-show-inactive').onchange=event=>{showInactiveServices=event.target.checked;renderServices()};
   Q('[data-service-action]').forEach(button=>button.onclick=async()=>{
-      const action=button.dataset.serviceAction,specialty=button.dataset.specialty,index=button.dataset.i===''||button.dataset.i===undefined?undefined:Number(button.dataset.i),service=index===undefined?undefined:SERVICES[index],row=rows.find(item=>item.index===index&&item.specialty===specialty)||rows.find(item=>item.name==='Consulta'&&item.specialty===specialty);
+      const action=button.dataset.serviceAction,specialty=button.dataset.specialty,index=button.dataset.i===''||button.dataset.i===undefined?undefined:Number(button.dataset.i),service=index===undefined?undefined:SERVICES[index],row=rows.find(item=>item.index===index&&item.specialty===specialty)||rows.find(item=>item.isConsultation&&item.specialty===specialty);
       if(action==='view'&&row){const linkedDoctors=FU.filter(employee=>employee.f==='Médico'&&employee.s===row.specialty&&employee.st==='Activo').map(employee=>employee.n).join(', ')||'Sem médico associado',safeKv=(label,value)=>kv(htmlSafe(label),htmlSafe(value));dm('Detalhes do Serviço','stethoscope',row.name,[['Categoria',row.category],['Especialidade',row.specialty],['Preço',row.price?mt(row.price):'Por definir']],[['Estado',row.state],['Profissionais',linkedDoctors]],[['Resumo',`<div class="fg">${safeKv('Serviço',row.name)}${safeKv('Categoria',row.category)}${safeKv('Especialidade',row.specialty)}${safeKv('Profissionais associados',linkedDoctors)}${safeKv('Preço',row.price?mt(row.price):'Por definir')}${safeKv('Estado',row.state)}</div>`]]);return}
       if(!canManage)return;
       if(action==='edit'&&service){form('Editar serviço',serviceForm(service),()=>saveService(service),'Guardar alterações',1);return}
-      if(action==='price'){const current=SERVICES.find(item=>item.name.trim().toLowerCase()==='consulta'&&item.specialty===specialty),draft=current||{name:'Consulta',category:'Consultas',specialty,price:''};form('Definir preço de consulta',serviceForm(draft),()=>saveService(current),'Guardar preço',1);return}
+      if(action==='price'){const current=SERVICES.find(item=>isConsultationService(item)&&item.specialty===specialty),draft=current||{name:'Consulta',category:'Consultas',specialty,price:''};form('Definir preço de consulta',serviceForm(draft),()=>saveService(current),'Guardar preço',1);return}
       if(action==='delete'&&service){deleteService(index);return}
-      if(action==='toggle'&&service){const previous=service.active;if(previous===false&&(!Number.isSafeInteger(service.price)||service.price<=0)){popup('Defina um preço válido antes de activar este serviço.');return}if(previous===false&&service.name.trim().toLowerCase()==='consulta'&&SERVICES.some(item=>item!==service&&item.active!==false&&item.name.trim().toLowerCase()==='consulta'&&item.specialty===service.specialty)){popup('Já existe um preço de consulta activo para esta especialidade.');return}service.active=previous===false;try{await window.mvidaAuth.saveState();renderServices()}catch(error){service.active=previous;popup(error.message||'Não foi possível actualizar o serviço.')}return}
+      if(action==='toggle'&&service){const previous=service.active;if(previous===false&&(!Number.isSafeInteger(service.price)||service.price<=0)){popup('Defina um preço válido antes de activar este serviço.');return}if(previous===false&&isConsultationService(service)&&SERVICES.some(item=>item!==service&&item.active!==false&&isConsultationService(item)&&item.specialty===service.specialty)){popup('Já existe um preço de consulta activo para esta especialidade.');return}service.active=previous===false;try{await window.mvidaAuth.saveState();renderServices()}catch(error){service.active=previous;popup(error.message||'Não foi possível actualizar o serviço.')}return}
       if(action==='toggle')setConsultationActive(specialty,false)
     });
   $('bsvc-catalog').onclick=()=>{
     const desired=[],selected=[];
     for(const specialty of specialties){
       let definitions=DEFAULT_SERVICE_CATALOG.filter(([, ,entrySpecialty])=>entrySpecialty===specialty);
-      if(definitions.length!==2){
-        const existing=SERVICES.filter(service=>(service.specialty||'Sem especialidade')===specialty&&service.name.trim().toLowerCase()!=='consulta')
+      if(!definitions.length){
+        const existing=SERVICES.filter(service=>(service.specialty||'Sem especialidade')===specialty&&!isConsultationService(service))
           .sort((left,right)=>Number(right.active!==false)-Number(left.active!==false)||PG.filter(payment=>payment.serviceId===right.id).length-PG.filter(payment=>payment.serviceId===left.id).length);
         if(existing.length<2){popup(`Não foi possível definir dois serviços para ${specialty}; faltam nomes ou preços no catálogo.`);return}
         definitions=existing.slice(0,2).map(service=>[service.name,service.category||'Outros serviços',specialty,service.price]);
       }
       for(const [name,category,entrySpecialty,price] of definitions){
-        let service=SERVICES.find(candidate=>!selected.includes(candidate)&&candidate.name.trim().toLowerCase()===name.toLowerCase()&&candidate.specialty===entrySpecialty);
+        let service=SERVICES.find(candidate=>!selected.includes(candidate)&&!isConsultationService(candidate)&&candidate.name.trim().toLowerCase()===name.toLowerCase()&&candidate.specialty===entrySpecialty);
         if(!service){service={id:`catalogo-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,name,category,specialty:entrySpecialty,price,active:true};desired.push(service)}
         else selected.push(service);
       }
     }
-    const extras=SERVICES.filter(service=>service.name.trim().toLowerCase()!=='consulta'&&!selected.includes(service));
-    askConfirm('Aplicar catálogo essencial?',`Serão mantidos dois serviços por especialidade, além da consulta. ${desired.length} serviços poderão ser adicionados e ${extras.length} serviços antigos ficarão inactivos, sem apagar cobranças ou histórico. Preços sugeridos devem ser confirmados pela clínica antes de serem cobrados.`,'Aplicar catálogo',async()=>{
+    const extras=SERVICES.filter(service=>!isConsultationService(service)&&!selected.includes(service));
+    askConfirm('Aplicar catálogo essencial?',`Serão mantidos os níveis de serviço definidos para cada especialidade. ${desired.length} serviços poderão ser adicionados e ${extras.length} serviços antigos ficarão inactivos, sem apagar cobranças ou histórico. Os preços base das consultas serão definidos de acordo com o catálogo.`,'Aplicar catálogo',async()=>{
       const previous=SERVICES.map(service=>({...service}));
-      const next=SERVICES.map(service=>service.name.trim().toLowerCase()==='consulta'?service:{...service,active:selected.includes(service)});
-      SERVICES.splice(0,SERVICES.length,...next,...desired);
+      const consultationPrices=new Map(DEFAULT_CONSULTATION_PRICES);
+      const consultations=[],updatedConsultations=new Set();
+      const next=SERVICES.map(service=>{
+        if(isConsultationService(service)){
+          const price=consultationPrices.get(service.specialty);
+          if(price===undefined)return service;
+          if(updatedConsultations.has(service.specialty))return{...service,active:false};
+          updatedConsultations.add(service.specialty);
+          return{...service,price,active:true};
+        }
+        return{...service,active:selected.includes(service)};
+      });
+      for(const [specialty,price] of DEFAULT_CONSULTATION_PRICES){
+        if(updatedConsultations.has(specialty))continue;
+        consultations.push({id:`catalogo-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,name:'Consulta',category:'Consultas',specialty,price,active:true});
+      }
+      SERVICES.splice(0,SERVICES.length,...next,...consultations,...desired);
       try{await window.mvidaAuth.saveState();renderServices();toast('Catálogo essencial aplicado. Confirme os preços sugeridos antes de registar cobranças.')}
       catch(error){SERVICES.splice(0,SERVICES.length,...previous);renderServices();popup(error.message||'Não foi possível aplicar o catálogo essencial.')}
     })
   };
   const setConsultationActive=async(specialty,active)=>{
-    const index=SERVICES.findIndex(service=>service.name.trim().toLowerCase()==='consulta'&&service.specialty===specialty);
+    const index=SERVICES.findIndex(service=>isConsultationService(service)&&service.specialty===specialty);
     let service=index>=0?SERVICES[index]:null,created=false;
     if(!service&&!active){
       const doctors=FU.filter(employee=>employee.f==='Médico'&&employee.s===specialty),price=doctors.length===1?Number(doctors[0].p):0;
@@ -840,8 +877,8 @@ function renderServices(){
 }
 RR.tsvc=renderServices;
 const deleteService=index=>{const service=SERVICES[index];if(serviceIsReferenced(service)){toast('Este serviço tem cobranças ou consultas associadas; desactive-o para preservar o histórico.');return}askConfirm('Eliminar serviço?',`O serviço "${service.name}" será removido permanentemente. Esta acção não pode ser anulada.`,'Eliminar',async()=>{SERVICES.splice(index,1);try{await window.mvidaAuth.saveState();renderServices();toast('Serviço eliminado')}catch(error){SERVICES.splice(index,0,service);renderServices();toast(error.message||'Não foi possível eliminar o serviço.')}})};
-const saveService=async service=>{const name=V('svc-name').trim(),category=$('svc-category').value,specialty=$('svc-specialty').value,price=Number($('svc-price').value);if(!name||!category||!specialty||!Number.isSafeInteger(price)||price<=0){popup('Indique o nome, a categoria, a especialidade e um preço inteiro válido.');return false}if(name.toLowerCase()==='consulta'&&SERVICES.some(item=>item!==service&&item.name.trim().toLowerCase()==='consulta'&&item.specialty===specialty)){popup('Já existe um preço de consulta para esta especialidade.');return false}const previous=service?{...service}:null;if(service)Object.assign(service,{name,category,specialty,price});else SERVICES.push({id:`servico-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,name,category,specialty,price,active:true});try{await window.mvidaAuth.saveState()}catch(error){if(service)Object.assign(service,previous);else SERVICES.pop();throw error}renderServices();return true};
-const ntr=()=>{if(!['Administrador','Recepção'].includes(USER?.pf)){toast('Só a recepção ou o administrador podem registar tratamentos.');return}const patients=PA.filter(x=>x.st==='Activo'),services=SERVICES.filter(x=>x.active!==false&&x.name.trim().toLowerCase()!=='consulta');if(!patients.length){M('Novo tratamento','<p style="color:var(--mu);margin:0">Registe primeiro um paciente activo.</p>');return}if(!services.length){M('Serviços indisponíveis','<p style="color:var(--mu);margin:0">Adicione um serviço de tratamento antes de registar este procedimento.</p>');return}form('Registar tratamento',`<div class="fg">${sl('Paciente',['',...patients.map(x=>x.n)],'','f_p')}${sl('Serviço',['',...services.map(x=>x.name)],'','f_service')}<label class="fl">Descrição da cobrança<input class="busca" id="f_ds" maxlength="120"></label><label class="fl">Preço do serviço (MT)<input class="busca" id="f_v" type="number" disabled></label>${fi('Data',TODAY,'date','f_d')}<div class="info" style="grid-column:1/-1">A cobrança ficará pendente e usará o preço definido para o serviço seleccionado.</div></div>`,()=>{const patient=$('f_p').value,service=services[$('f_service').selectedIndex-1],description=V('f_ds').trim(),date=$('f_d').value;if(!patient||!service||!description||!date){toast('Indique paciente, serviço, descrição e data.');return false}const value=service.price;if(!Number.isSafeInteger(value)||value<=0){toast('O serviço seleccionado não tem um preço válido.');return false}PG.push({id:nextPaymentId(),kind:'Tratamento',serviceId:service.id,d:date,pac:patient,ds:description,v:value,st:'Pendente',m:'—'});lg('Registo de tratamento',`${patient} · ${description} · ${mt(value)}`);rpg();toast('Tratamento registado como pendente')},'Guardar tratamento',1);$('f_service').onchange=()=>{const service=services[$('f_service').selectedIndex-1];if(service){$('f_ds').value=service.name;$('f_v').value=service.price}}};
+const saveService=async service=>{const name=V('svc-name').trim(),category=$('svc-category').value,specialty=$('svc-specialty').value,price=Number($('svc-price').value);if(!name||!category||!specialty||!Number.isSafeInteger(price)||price<=0){popup('Indique o nome, a categoria, a especialidade e um preço inteiro válido.');return false}if(isConsultationService({name,category})&&SERVICES.some(item=>item!==service&&isConsultationService(item)&&item.specialty===specialty)){popup('Já existe um preço de consulta para esta especialidade.');return false}const previous=service?{...service}:null;if(service)Object.assign(service,{name,category,specialty,price});else SERVICES.push({id:`servico-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,name,category,specialty,price,active:true});try{await window.mvidaAuth.saveState()}catch(error){if(service)Object.assign(service,previous);else SERVICES.pop();throw error}renderServices();return true};
+const ntr=()=>{if(!['Administrador','Recepção'].includes(USER?.pf)){toast('Só a recepção ou o administrador podem registar tratamentos.');return}const patients=PA.filter(x=>x.st==='Activo'),services=SERVICES.filter(x=>x.active!==false&&!isConsultationService(x));if(!patients.length){M('Novo tratamento','<p style="color:var(--mu);margin:0">Registe primeiro um paciente activo.</p>');return}if(!services.length){M('Serviços indisponíveis','<p style="color:var(--mu);margin:0">Adicione um serviço de tratamento antes de registar este procedimento.</p>');return}form('Registar tratamento',`<div class="fg">${sl('Paciente',['',...patients.map(x=>x.n)],'','f_p')}${sl('Serviço',['',...services.map(x=>x.name)],'','f_service')}<label class="fl">Descrição da cobrança<input class="busca" id="f_ds" maxlength="120"></label><label class="fl">Preço do serviço (MT)<input class="busca" id="f_v" type="number" disabled></label>${fi('Data',TODAY,'date','f_d')}<div class="info" style="grid-column:1/-1">A cobrança ficará pendente e usará o preço definido para o serviço seleccionado.</div></div>`,()=>{const patient=$('f_p').value,service=services[$('f_service').selectedIndex-1],description=V('f_ds').trim(),date=$('f_d').value;if(!patient||!service||!description||!date){toast('Indique paciente, serviço, descrição e data.');return false}const value=service.price;if(!Number.isSafeInteger(value)||value<=0){toast('O serviço seleccionado não tem um preço válido.');return false}PG.push({id:nextPaymentId(),kind:'Tratamento',serviceId:service.id,d:date,pac:patient,ds:description,v:value,st:'Pendente',m:'—'});lg('Registo de tratamento',`${patient} · ${description} · ${mt(value)}`);rpg();toast('Tratamento registado como pendente')},'Guardar tratamento',1);$('f_service').onchange=()=>{const service=services[$('f_service').selectedIndex-1];if(service){$('f_ds').value=service.name;$('f_v').value=service.price}}};
 const epg=i=>{
   const x=PG[i],admin=ADM(),reception=USER?.pf==='Recepção';
   if(!admin&&!reception){toast('O seu perfil não pode gerir pagamentos.');return}
@@ -1039,7 +1076,7 @@ if(c.stamp){d.setDrawColor(...IN);d.setLineWidth(.8);d.circle(28,y2+30,13,'S');t
 save((c.file||'documento.pdf'),d.output('blob'))}
 const pinfo=n=>{const p=PA.find(x=>x.n===n)||{};return[n,p.t,p.e,p.p?'Nº de processo '+p.p:'']};
 function cfgRec(x){const date=paymentDate(x),appointment=CO.find(c=>c.id===x.appointmentId)||CO.find(c=>c.pac===x.pac&&c.med===x.med&&c.d===x.d),doctor=x.med||appointment?.med,m=FU.find(f=>f.n===doctor)||{},nr=x.receiptNumber||'DIN'+String(x.id).padStart(8,'0'),meta=[['Nº do Recibo',nr],['Data',br(date)],['Forma de Pagamento',x.m]];if(x.st==='Estornado')meta.push(['Data do estorno',br(x.refundedAt)],['Forma da devolução',x.refundMethod],['Comprovativo da devolução',x.refundReference]);if(x.st==='Anulado')meta.push(['Data da anulação',br(x.voidedAt?.slice(0,10))],['Motivo da anulação',x.voidReason||x.refundReason]);return{title:'Recibo de Pagamento',lbl1:'Informação do Paciente',l1:pinfo(x.pac),lbl2:doctor?'Médico Responsável':'Tipo de serviço',l2:doctor?[doctor,m.s,m.t]:[x.kind||'Tratamento'],meta,head:['Item','Descrição','Valor'],rows:[[x.kind||'Consulta',x.ds,mt(x.v)]],amt:1,tl:[['Subtotal',mt(x.v)]],tot:['Total',mt(x.v)],d:['Data',br(date)],p:[doctor?'Médico':'Serviço',doctor||x.ds],stamp:x.st==='Pago'?'PAGO':x.st==='Anulado'?'ANULADO':x.st==='Estornado'?'ESTORNADO':'PENDENTE',file:'Recibo-'+nr+'.pdf'}}
-function cfgHis(p){const r=[],cs=CO.filter(c=>c.pac===p.n),ps=PG.filter(c=>c.pac===p.n);cs.forEach(c=>r.push([c.d+c.h,br(c.d)+' '+c.h,`Consulta · ${c.esp} — ${c.med}`,`${c.st} · ${mt(Number(c.v)||Number(FU.find(f=>f.n===c.med)?.p)||30000)}`]));ps.forEach(c=>r.push([paymentDate(c)+'z',br(paymentDate(c)),`${c.kind||'Consulta'} · ${c.ds} (${c.m})`,mt(c.v)+' · '+c.st]));r.sort((a,b)=>a[0]<b[0]?1:-1);
+function cfgHis(p){const r=[],cs=CO.filter(c=>c.pac===p.n),ps=PG.filter(c=>c.pac===p.n);cs.forEach(c=>r.push([c.d+c.h,br(c.d)+' '+c.h,`${appointmentServiceName(c)} · ${c.esp} — ${c.med}`,`${c.st} · ${mt(Number(c.v)||Number(FU.find(f=>f.n===c.med)?.p)||30000)}`]));ps.forEach(c=>r.push([paymentDate(c)+'z',br(paymentDate(c)),`${c.kind||'Consulta'} · ${c.ds} (${c.m})`,mt(c.v)+' · '+c.st]));r.sort((a,b)=>a[0]<b[0]?1:-1);
 return{title:'Histórico do Paciente',lbl1:'Informação do Paciente',l1:[p.n,p.t,p.e,'Nº de processo '+p.p],lbl2:'Dados Clínicos',l2:['Tipo sanguíneo: '+(p.tb||'—'),'Alergias: '+p.al],meta:[['Nº de Processo',p.p],['Emissão',br(TODAY)],['Registos',r.length]],head:['Data','Descrição','Estado / Valor'],rows:r.map(x=>x.slice(1)),tl:[['Consultas',cs.length],['Pagamentos',ps.length]],tot:['Total pago',mt(ps.filter(c=>c.st==='Pago').reduce((t,c)=>t+c.v,0))],d:['Data',br(TODAY)],p:['Emitido por',USER.n],stamp:'',file:'Historico-'+p.p+'.pdf'}}
 function cfgLog(x,tit,l2,extra){const r=AU.filter(a=>a.u===x.n||a.ds.indexOf(x.n)>=0).map(a=>[br(a.d)+' '+a.h,a.op,a.ds]);return{title:tit,lbl1:'Informação',l1:[x.n,x.e||x.t,x.f||x.pf],lbl2:l2[0],l2:l2[1],meta:[['Registos',r.length],['Emissão',br(TODAY)],['Perfil',x.f||x.pf]],head:['Data','Operação','Descrição'],rows:r.concat(extra||[]),tl:[['Registos',r.length+(extra||[]).length]],tot:['Total',r.length+(extra||[]).length],d:['Data',br(TODAY)],p:['Emitido por',USER.n],stamp:'',file:'Historico-'+x.n.replace(/\W+/g,'-')+'.pdf'}}
 function cfgRel(r){const c=r.c;return{title:r.t,lbl1:'Período',l1:[rper(r),r.d],lbl2:'Gerado por',l2:[USER.n,rgt(r)],meta:[['Tipo',r.t.replace(/^Relatório (de )?/,'')],['Gerado em',rgt(r)],['Formato','PDF']],head:c.h,rows:c.r,tl:c.k.map(k=>[k[0],k[1]]),tot:['Registos',c.r.length],d:['Data',rgt(r).slice(0,10)],p:['Gerado por',USER.n],stamp:'',file:r.t.replace(/\s+/g,'-')+'.pdf'}}
