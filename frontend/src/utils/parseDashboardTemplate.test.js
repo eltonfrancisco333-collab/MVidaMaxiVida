@@ -477,7 +477,7 @@ test('new employee forms use distinct sections and consistent centred dialogs', 
   const dashboard = await readFile(dashboardPath, 'utf8');
   const employeeForm = dashboard.slice(dashboard.indexOf('const nfu=()=>'), dashboard.indexOf('const dfu=', dashboard.indexOf('const nfu=()=>')));
 
-  assert.match(dashboard, /'Enfermeira Parteira','Fisioterapeuta','Técnico','Técnico de Laboratório','Técnica de Laboratório','Técnico de Imagiologia','Motorista'/);
+  assert.match(dashboard, /'Enfermeiro','Enfermeira','Enfermeira Parteira','Fisioterapeuta','Técnico','Técnico de Laboratório','Técnica de Laboratório','Técnico de Imagiologia','Motorista'/);
   assert.match(dashboard, /'Cardiologia','Cirurgia Geral','Dermatologia','Enfermagem','Fisioterapia','Ginecologia','Imagiologia','Internamento','Laboratório','Odontologia','Ortopedia','Pediatria','Saúde Materno-Infantil','Transporte'/);
   assert.match(dashboard, /Serviços associados \(um por linha\)/);
   assert.match(dashboard, /serviceNames=V\('f_services'\)\.split\(/);
