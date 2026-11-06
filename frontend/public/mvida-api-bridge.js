@@ -56,7 +56,10 @@
       MUST_CHANGE_PASSWORD = result.mustChangePassword === true;
     },
     resetPassword(email) {
-      return accountRequest('/api/users/password/reset', { email });
+      return accountRequest('/api/users/password/reset', { email }).then((result) => {
+        if (Number.isSafeInteger(result._revision) && result._revision >= 0) stateRevision = result._revision;
+        return result;
+      });
     },
     updateAccess(email, profile, status) {
       return accountRequest('/api/users/access', { email, profile, status });

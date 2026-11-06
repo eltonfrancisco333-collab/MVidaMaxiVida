@@ -610,6 +610,18 @@ test('a primeira utilização começa sem registos e permite criar o administrad
   const resetResult = await reset.json();
   assert.equal(typeof resetResult.temporaryPassword, 'string');
   assert.ok(resetResult.temporaryPassword.length >= 20);
+  assert.ok(Number.isSafeInteger(resetResult._revision));
+
+  const stateAfterResetResponse = await fetch(`${baseUrl}/api/state`, { headers: authHeaders() });
+  assert.equal(stateAfterResetResponse.status, 200);
+  const stateAfterReset = await stateAfterResetResponse.json();
+  assert.equal(stateAfterReset._revision, resetResult._revision);
+  const saveAfterReset = await fetch(`${baseUrl}/api/state`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(stateAfterReset)
+  });
+  assert.equal(saveAfterReset.status, 200);
 
   const temporaryLogin = await fetch(`${baseUrl}/api/auth/login`, {
     method: 'POST',

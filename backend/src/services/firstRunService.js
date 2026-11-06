@@ -172,11 +172,11 @@ export class FirstRunService {
 
     const temporaryPassword = randomBytes(18).toString('base64url');
     user.authManaged = true;
-    await this.stateService.saveState(state);
+    const savedState = await this.stateService.saveState(state);
     const role = await this.credentialRepository.getRole(email) || user.pf;
     await this.credentialRepository.set(email, temporaryPassword, { mustChangePassword: true, role });
     this.revokeSessions(email);
-    return { temporaryPassword };
+    return { temporaryPassword, _revision: savedState._revision };
   }
 
   async updateUserAccess(token, input) {

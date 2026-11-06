@@ -106,6 +106,7 @@ test('queued state saves send the exact snapshot captured when the save was requ
   assert.doesNotMatch(saveState, /currentBody/);
   assert.match(saveState, /JSON\.stringify\(stateSnapshot\(\)\) === body/);
   assert.match(bridge, /lastObservedState = stateUnchanged \? savedBody : JSON\.stringify\(stateSnapshot\(\)\)/);
+  assert.match(bridge, /resetPassword\(email\)\s*\{\s*return accountRequest\('\/api\/users\/password\/reset', \{ email \}\)\.then\(\(result\) => \{\s*if \(Number\.isSafeInteger\(result\._revision\) && result\._revision >= 0\) stateRevision = result\._revision/);
   assert.match(bridge, /async function completeAppointment\(appointmentId, clinicalNote\)/);
   assert.match(bridge, /fetch\('\/api\/appointments\/complete'/);
 });
