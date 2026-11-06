@@ -274,7 +274,7 @@ button:focus-visible,a:focus-visible{outline:3px solid color-mix(in srgb,var(--g
 </section>
 <section class="page off" id="v-funcionarios">
   <div class="tit"><h1>Gestão de Funcionários</h1></div>
-  <div class="sbar"><select class="sel" id="ffn"><option>Todos</option><option>Médico</option><option>Enfermeiro</option><option>Técnico</option><option>Recepção</option><option>Administrador</option><option>Servente</option><option>Maqueiro</option></select><select class="sel" id="fst"><option>Em actividade</option><option>Activo</option><option>Afastado</option><option>Inactivo</option><option>Todos</option></select><button class="btn" id="bnf"><i data-lucide="plus"></i>Novo Funcionário</button></div>
+  <div class="sbar"><select class="sel" id="ffn"><option>Todos</option></select><select class="sel" id="fst"><option>Em actividade</option><option>Activo</option><option>Afastado</option><option>Inactivo</option><option>Todos</option></select><button class="btn" id="bnf"><i data-lucide="plus"></i>Novo Funcionário</button></div>
   <div class="card" id="tfu"></div>
 </section>
 <section class="page off" id="v-utilizadores">
@@ -453,7 +453,7 @@ const npa=()=>{const x={n:'',e:'',t:'',ta:'',bi:'',nc:'',ca:'SMS',al:'',tb:'',st
 const dpa=i=>{const x=PA[i];if(!ADM()){toast('Só o administrador pode eliminar pacientes.');return}if(CO.some(c=>c.pac===x.n)||PG.some(p=>p.pac===x.n)||AU.some(a=>`${a.ds||''} ${a.op||''}`.includes(x.n))){toast('Este paciente tem consultas ou actividade registada. Altere o estado para Inactivo para preservar o histórico.');return}conf(`Eliminar o paciente ${x.n}?`,()=>{lg('Eliminação de paciente',`Paciente ${x.n} eliminado`,'Aviso');PA.splice(i,1);rpa()})};
 /* ---------- FUNCIONÁRIOS ---------- */
 const FX={f:'Todos',e:'Em actividade'},FNS=['Médico','Enfermeiro','Enfermeira','Enfermeira Parteira','Fisioterapeuta','Técnico','Técnico de Laboratório','Técnica de Laboratório','Técnico de Imagiologia','Motorista','Recepção','Financeiro','Administrador','Servente','Maqueiro'],ESPS=['Clínica Geral','Cardiologia','Cirurgia Geral','Dermatologia','Enfermagem','Fisioterapia','Ginecologia','Imagiologia','Internamento','Laboratório','Odontologia','Ortopedia','Pediatria','Saúde Materno-Infantil','Transporte'];
-function rfu(){const r=[];FU.forEach((x,i)=>{if(FX.f!=='Todos'&&x.f!==FX.f)return;if(FX.e==='Em actividade'?x.st==='Inactivo':FX.e!=='Todos'&&x.st!==FX.e)return;r.push({i,c:[`<div class="av2">${ini(x.n)}</div>`,x.n,x.f,x.s,x.a?`<span class="tag t-b">${x.a}</span>`:'<span class="tag t-x">Sem conta</span>',tag(x.st),acts(['v','h','e','d'])]})});
+function rfu(){const filter=$('ffn'),roles=[...new Set(FU.map(employee=>employee.f).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt'));filter.replaceChildren(new Option('Todos','Todos'),...roles.map(role=>new Option(role,role)));if(!roles.includes(FX.f))FX.f='Todos';filter.value=FX.f;const r=[];FU.forEach((x,i)=>{if(FX.f!=='Todos'&&x.f!==FX.f)return;if(FX.e==='Em actividade'?x.st==='Inactivo':FX.e!=='Todos'&&x.st!==FX.e)return;r.push({i,c:[`<div class="av2">${ini(x.n)}</div>`,x.n,x.f,x.s,x.a?`<span class="tag t-b">${x.a}</span>`:'<span class="tag t-x">Sem conta</span>',tag(x.st),acts(['v','h','e','d'])]})});
 tbl('tfu',['Foto','Nome Completo','Função','Sector / Especialidade','Acesso ao sistema','Estado','Ações'],r);$('bnf').style.display=ADM()?'':'none'}
 RR.tfu=rfu;
 const DIAS7=()=>DW;

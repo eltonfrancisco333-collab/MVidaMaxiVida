@@ -478,6 +478,10 @@ test('new employee forms use distinct sections and consistent centred dialogs', 
   const dashboard = await readFile(dashboardPath, 'utf8');
   const employeeForm = dashboard.slice(dashboard.indexOf('const nfu=()=>'), dashboard.indexOf('const dfu=', dashboard.indexOf('const nfu=()=>')));
 
+  assert.match(dashboard, /<select class="sel" id="ffn"><option>Todos<\/option><\/select>/);
+  assert.match(dashboard, /const filter=\$\('ffn'\),roles=\[\.\.\.new Set\(FU\.map\(employee=>employee\.f\)\.filter\(Boolean\)\)\]\.sort/);
+  assert.match(dashboard, /filter\.replaceChildren\(new Option\('Todos','Todos'\),\.\.\.roles\.map\(role=>new Option\(role,role\)\)\)/);
+  assert.match(dashboard, /if\(!roles\.includes\(FX\.f\)\)FX\.f='Todos';filter\.value=FX\.f/);
   assert.match(dashboard, /'Enfermeiro','Enfermeira','Enfermeira Parteira','Fisioterapeuta','Técnico','Técnico de Laboratório','Técnica de Laboratório','Técnico de Imagiologia','Motorista'/);
   assert.match(dashboard, /'Cardiologia','Cirurgia Geral','Dermatologia','Enfermagem','Fisioterapia','Ginecologia','Imagiologia','Internamento','Laboratório','Odontologia','Ortopedia','Pediatria','Saúde Materno-Infantil','Transporte'/);
   assert.match(dashboard, /Serviços associados \(um por linha\)/);
