@@ -488,6 +488,8 @@ test('new employee forms use distinct sections and consistent centred dialogs', 
   assert.match(employeeForm, /Contacto/);
   assert.match(employeeForm, /Função e departamento/);
   assert.match(employeeForm, /Telefone alternativo \(opcional\)/);
+  assert.match(employeeForm, /const savedAccount=US\.find\(user=>user\.e\.toLowerCase\(\)===email\.toLowerCase\(\)\)/);
+  assert.match(employeeForm, /savedAccount\.authManaged=true/);
   assert.match(dashboard, /\.ov \.md\.alert-dialog\{width:min\(440px,calc\(100vw - 32px\)\);text-align:center/);
   assert.match(dashboard, /modal\.className='md alert-dialog'/);
   assert.match(dashboard, /body\.className='alert-message'/);

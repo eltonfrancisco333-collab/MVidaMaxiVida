@@ -490,7 +490,9 @@ const nfu=()=>{form('Novo funcionário',`<div class="sg2 staff-form"><section cl
   if(account){
     try{
       const result=await window.mvidaAuth.resetPassword(email);
-      account.authManaged=true;
+      const savedAccount=US.find(user=>user.e.toLowerCase()===email.toLowerCase());
+      if(!savedAccount)throw new Error('Conta criada mas não encontrada após gerar a palavra-passe.');
+      savedAccount.authManaged=true;
       lg('Registo de funcionário',`${name} (${functionName}) registado`);
       rfu();
       $('gb').innerHTML=`<p style="color:var(--mu);line-height:1.55;margin-bottom:12px">Entregue esta palavra-passe temporária ao funcionário por um canal seguro. A alteração será obrigatória no primeiro acesso.</p><code class="temporary-password">${result.temporaryPassword}</code>`;
