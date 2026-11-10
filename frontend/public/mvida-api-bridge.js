@@ -426,10 +426,10 @@
     overlay.remove();
     if (!status.configured) return;
 
-    const response = await fetch('/api/auth/session');
-    if (response.status === 401) return;
-    const session = await response.json();
-    if (!response.ok || !session.user) {
+    const sessionResponse = await fetch('/api/auth/session');
+    if (sessionResponse.status === 401) return;
+    const session = await sessionResponse.json();
+    if (!sessionResponse.ok || !session.user) {
       throw new Error(session.error || 'Não foi possível restaurar a sessão.');
     }
     window.mvidaAuth.setSession(session);
