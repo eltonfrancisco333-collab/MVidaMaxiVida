@@ -272,10 +272,30 @@ test('table search stays beside each table and filters results as the user types
   assert.match(tableRenderer, /tableTools\(id,filtered\.length\)/);
   assert.match(tableRenderer, /data-table-search="\$\{id\}"/);
   assert.match(tableRenderer, /filterTableRows\(id,rows\)/);
+  assert.match(tableRenderer, /aria-label="Paginação da tabela"/);
+  assert.match(tableRenderer, /aria-label="Página anterior"[^>]*disabled/);
+  assert.match(tableRenderer, /<span>Anterior<\/span>/);
+  assert.match(tableRenderer, /Página \$\{p\+1\} de \$\{t\}/);
+  assert.match(tableRenderer, /<span>Seguinte<\/span><i data-lucide="chevron-right"><\/i>/);
+  assert.doesNotMatch(tableRenderer, /for\(let k=0;k<t;k\+\+\)/);
   assert.match(tableRenderer, /addEventListener\('input',event=>\{const input=event\.target\.closest\('\[data-table-search\]'\)/);
   assert.match(serviceRenderer, /data-table-search="tsvc"/);
   assert.match(serviceRenderer, /filteredRows=query\?visibleRows\.filter/);
   assert.doesNotMatch(dashboard, /id="global-search"/);
+});
+
+test('payment tabs separate statuses without duplicate receipts and all-record history', async () => {
+  const dashboard = await readFile(dashboardPath, 'utf8');
+  const tabsStart = dashboard.indexOf('<div class="tabs" id="tbp">');
+  const tabs = dashboard.slice(tabsStart, dashboard.indexOf('</div>', tabsStart));
+
+  assert.match(tabs, /data-p="pag">Pagamentos concluídos/);
+  assert.match(tabs, /data-p="con">Consultas pendentes/);
+  assert.match(tabs, /data-p="tra">Tratamentos pendentes/);
+  assert.match(tabs, /data-p="est">Anulados \/ estornados/);
+  assert.doesNotMatch(tabs, /Recibos|Histórico|data-p="rec"|data-p="his"/);
+  assert.match(dashboard, /PTF=\{pag:x=>x\.st==='Pago',con:x=>x\.st==='Pendente'&&x\.kind!=='Tratamento',tra:x=>x\.st==='Pendente'&&x\.kind==='Tratamento',est:x=>\['Anulado','Estornado'\]\.includes\(x\.st\)\}/);
+  assert.match(dashboard, /actions\.push\('r','x'\)/);
 });
 
 test('service actions use the shared icon controls and open the redesigned detail view', async () => {

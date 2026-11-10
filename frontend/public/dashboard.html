@@ -86,7 +86,7 @@ td{padding:11px 6px;border-bottom:1px solid var(--bd);font-size:13px}tr:last-chi
 .sbar{display:flex;gap:12px;flex-wrap:wrap}.sbar .busca{max-width:none}
 .av2{width:34px;height:34px;border-radius:50%;background:#dbe7f3;color:#35557a;display:grid;place-items:center;font-weight:700;font-size:12px}
 .acc{display:flex;gap:12px;color:var(--mu)}.acc .lucide{width:17px;height:17px;cursor:pointer}.acc .lucide:first-child{color:var(--bl)}.acc .lucide:last-child{color:var(--rd)}
-.pg{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-top:14px}.pg button{min-width:30px;height:30px;border:1px solid var(--bd);background:var(--card);border-radius:8px;cursor:pointer;color:var(--mu);font:500 12.5px Inter,sans-serif}.pg .on{background:var(--g);color:#fff;border-color:var(--g)}
+.pg{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:14px}.pg button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:0 10px;border:1px solid var(--bd);background:var(--card);border-radius:8px;cursor:pointer;color:var(--tx);font:500 12.5px Inter,sans-serif}.pg button:disabled{opacity:.45;cursor:not-allowed}.pg button .lucide{width:15px;height:15px}.pg-status{color:var(--mu);font-size:12px;white-space:nowrap}
 .kpis.t3{grid-template-columns:repeat(3,1fr)}
 .filt{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:13px}.filt label{display:flex;align-items:center;gap:8px;color:var(--mu)}
 .sel{border:1px solid var(--bd);background:var(--card);border-radius:10px;padding:9px 12px;font:13px Inter,sans-serif;color:var(--tx);cursor:pointer}
@@ -256,7 +256,7 @@ button:focus-visible,a:focus-visible{outline:3px solid color-mix(in srgb,var(--g
 </section>
 <section class="page off" id="v-pagamentos">
   <div class="tit"><h1>Gestão de Pagamentos</h1><div class="els"><button class="btn" id="bpg"><i data-lucide="plus"></i>Registar Pagamento</button></div></div>
-  <div class="tabs" id="tbp"><button class="on" data-p="rec">Recibos</button><button data-p="pag">Pagamentos concluídos</button><button data-p="con">Consultas pendentes</button><button data-p="tra">Tratamentos pendentes</button><button data-p="his">Histórico</button></div>
+  <div class="tabs" id="tbp"><button class="on" data-p="pag">Pagamentos concluídos</button><button data-p="con">Consultas pendentes</button><button data-p="tra">Tratamentos pendentes</button><button data-p="est">Anulados / estornados</button></div>
   <div class="kpis t3" id="kpg"></div>
   <div class="card" id="tpg"></div>
 </section>
@@ -427,7 +427,7 @@ const filterTableRows=(id,rows)=>{const query=norm(TQ[id]||'');return query?rows
 const tableTools=(id,count)=>`<div class="table-tools"><label class="table-search"><i data-lucide="search"></i><input class="busca" type="text" data-table-search="${id}" value="${htmlSafe(TQ[id]||'')}" placeholder="Pesquisar nesta tabela..." aria-label="Pesquisar nesta tabela"></label><span>${count} ${count===1?'registo':'registos'}</span></div>`;
 function tbl(id,heads,rows,N,hideEmpty){N=N||6;if(hideEmpty&&!rows.length){PG0[id]=0;$(id).innerHTML='';return}const filtered=filterTableRows(id,rows);let p=PG0[id]||0;const t=Math.max(1,Math.ceil(filtered.length/N));if(p>=t)p=t-1;PG0[id]=p;
 let h=tableTools(id,filtered.length)+`<div class="wrap"><table><thead><tr>${heads.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${filtered.length?filtered.slice(p*N,p*N+N).map(r=>`<tr data-t="${id}" data-i="${r.i}">${r.c.map(c=>`<td>${c}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${heads.length}" style="text-align:center;color:var(--mu);padding:28px">${TQ[id]?'Nenhum resultado para esta pesquisa.':'Sem resultados.'}</td></tr>`}</tbody></table></div>`;
-if(t>1){h+='<div class="pg">';for(let k=0;k<t;k++)h+=`<button class="pgb${k===p?' on':''}" data-t="${id}" data-p="${k}">${k+1}</button>`;h+='</div>'}
+if(t>1)h+=`<nav class="pg" aria-label="Paginação da tabela"><button type="button" class="pgb" data-t="${id}" data-p="${Math.max(0,p-1)}" aria-label="Página anterior"${p===0?' disabled':''}><i data-lucide="chevron-left"></i><span>Anterior</span></button><span class="pg-status" aria-live="polite">Página ${p+1} de ${t}</span><button type="button" class="pgb" data-t="${id}" data-p="${Math.min(t-1,p+1)}" aria-label="Página seguinte"${p===t-1?' disabled':''}><span>Seguinte</span><i data-lucide="chevron-right"></i></button></nav>`;
 $(id).innerHTML=h;ic();lab()}
 document.addEventListener('input',event=>{const input=event.target.closest('[data-table-search]');if(!input)return;const id=input.dataset.tableSearch,cursor=input.selectionStart;TQ[id]=input.value;PG0[id]=0;RR[id]?.();const next=Q(`[data-table-search="${id}"]`)[0];if(next){next.focus();next.setSelectionRange(cursor,cursor)}});
 function lab(){Q('.wrap table').forEach(t=>{const h=Q('th',t).map(x=>x.textContent);Q('td',t).forEach((d,i)=>d.dataset.l=h[i%h.length]||'')})}
@@ -635,7 +635,7 @@ const nco=()=>{
 };
 const dco=()=>toast('As consultas não podem ser eliminadas; cancele ou marque a falta para preservar o histórico.');
 /* ---------- PAGAMENTOS ---------- */
-let pt='rec';const legacyAppointmentForPayment=x=>{if(x.appointmentId||x.kind==='Tratamento')return undefined;const matches=CO.filter(a=>a.pac===x.pac&&a.med===x.med&&a.d===x.d&&/consulta/i.test(x.ds||''));return matches.length===1?matches[0]:undefined},appointmentForPayment=x=>CO.find(a=>a.id===x.appointmentId)||(!x.appointmentId&&x.kind==='Consulta'?legacyAppointmentForPayment(x):undefined),paymentReady=x=>x.kind==='Tratamento'||(x.kind==='Consulta'&&appointmentForPayment(x)?.st==='Concluída'),canRecordPayments=()=>['Administrador','Recepção'].includes(USER?.pf),paymentNotice=message=>window.mvidaNotify?window.mvidaNotify(message):toast(message),PTF={rec:x=>x.st==='Pago'||(!!x.receiptNumber&&['Anulado','Estornado'].includes(x.st)),pag:x=>x.st==='Pago',con:x=>x.st==='Pendente'&&x.kind==='Consulta'&&paymentReady(x),tra:x=>x.st==='Pendente'&&x.kind==='Tratamento',his:()=>true};
+let pt='pag';const legacyAppointmentForPayment=x=>{if(x.appointmentId||x.kind==='Tratamento')return undefined;const matches=CO.filter(a=>a.pac===x.pac&&a.med===x.med&&a.d===x.d&&/consulta/i.test(x.ds||''));return matches.length===1?matches[0]:undefined},appointmentForPayment=x=>CO.find(a=>a.id===x.appointmentId)||(!x.appointmentId&&x.kind==='Consulta'?legacyAppointmentForPayment(x):undefined),paymentReady=x=>x.kind==='Tratamento'||(x.kind==='Consulta'&&appointmentForPayment(x)?.st==='Concluída'),canRecordPayments=()=>['Administrador','Recepção'].includes(USER?.pf),paymentNotice=message=>window.mvidaNotify?window.mvidaNotify(message):toast(message),PTF={pag:x=>x.st==='Pago',con:x=>x.st==='Pendente'&&x.kind!=='Tratamento',tra:x=>x.st==='Pendente'&&x.kind==='Tratamento',est:x=>['Anulado','Estornado'].includes(x.st)};
 function notificationItems(){
   if(!USER||MUST_CHANGE_PASSWORD)return[];
   const {date,time}=clinicClock(),items=[],profile=USER.pf;
