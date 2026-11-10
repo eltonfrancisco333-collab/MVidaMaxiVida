@@ -51,7 +51,7 @@
 
   window.mvidaAuth = {
     setSession(result) {
-      authToken = result.token;
+      authToken = typeof result.token === 'string' ? result.token : '';
       this.user = result.user;
       MUST_CHANGE_PASSWORD = result.mustChangePassword === true;
     },
@@ -180,7 +180,7 @@
   }
 
   async function saveState() {
-    if (!authToken || MUST_CHANGE_PASSWORD) return;
+    if ((!authToken && !window.mvidaAuth.user) || MUST_CHANGE_PASSWORD) return;
     const body = JSON.stringify(stateSnapshot());
     if (body === lastSaved) return;
     const operation = saveQueue.catch(() => {}).then(async () => {
@@ -398,7 +398,9 @@
     const response = await fetch('/api/state', { headers: { Authorization: 'Bearer ' + authToken } });
     const state = await response.json();
     if (!response.ok || !isCompatibleState(state)) {
-      throw new Error(state.error || 'Não foi possível carregar os dados autorizados para esta conta.');
+      const error = new Error(state.error || 'Não foi possível carregar os dados autorizados para esta conta.');
+      error.status = response.status;
+      throw error;
     }
     repairKnownText(state);
     applyState(state);
@@ -422,6 +424,31 @@
     document.body.classList.add('auth-pending');
     installAccountAccess();
     overlay.remove();
+    if (!status.configured) return;
+
+    const response = await fetch('/api/auth/session');
+    if (response.status === 401) return;
+    const session = await response.json();
+    if (!response.ok || !session.user) {
+      throw new Error(session.error || 'Não foi possível restaurar a sessão.');
+    }
+    window.mvidaAuth.setSession(session);
+    if (session.mustChangePassword) {
+      USER = session.user;
+      document.body.classList.remove('auth-pending');
+      $('lgn').classList.add('off');
+      openPasswordChange(true);
+      return;
+    }
+    try {
+      await loadAuthenticatedState();
+      entrar(session.user, { restored: true });
+    } catch (error) {
+      if (error.status !== 401) throw error;
+      await window.mvidaAuth.logout();
+      window.mvidaAuth.clearSession();
+      lerr('A sessão expirou. Inicie sessão novamente.');
+    }
   }
 
   connect().catch((error) => {

@@ -1,10 +1,11 @@
 import { readJsonBody } from '../middlewares/readJsonBody.js';
 import { ApiError } from '../utils/errors.js';
 import { sendJson } from '../utils/http.js';
+import { getSessionToken } from '../utils/auth.js';
 
 export function createAppointmentController(stateAccessService, firstRunService) {
   return async (request, response) => {
-    const token = request.headers.authorization?.replace(/^Bearer\s+/i, '');
+    const token = getSessionToken(request);
     const user = await firstRunService.assertPasswordChanged(token);
     const body = await readJsonBody(request);
     if (!body || typeof body !== 'object' || Array.isArray(body)

@@ -490,6 +490,21 @@ test('a primeira utilização começa sem registos e permite criar o administrad
   assert.equal(created.user.protectedAdministrator, true);
   assert.equal(typeof created.token, 'string');
   assert.equal(Object.hasOwn(created.user, 'password'), false);
+  const sessionCookie = setup.headers.get('set-cookie');
+  assert.match(sessionCookie, /mvida_session=[a-f0-9]+; Path=\/; HttpOnly; SameSite=Lax; Max-Age=28800/);
+  const cookie = sessionCookie.split(';')[0];
+  const restoredSession = await fetch(`${baseUrl}/api/auth/session`, { headers: { Cookie: cookie } });
+  assert.deepEqual(await restoredSession.json(), {
+    user: created.user,
+    mustChangePassword: false
+  });
+  const cookieState = await fetch(`${baseUrl}/api/state`, { headers: { Cookie: cookie } });
+  assert.equal(cookieState.status, 200);
+  const expiredSession = await fetch(`${baseUrl}/api/auth/session`, {
+    headers: { Cookie: 'mvida_session=expired' }
+  });
+  assert.equal(expiredSession.status, 401);
+  assert.match(expiredSession.headers.get('set-cookie'), /Max-Age=0/);
   const authHeaders = (token = created.token) => ({ Authorization: 'Bearer ' + token });
 
   const savedResponse = await fetch(`${baseUrl}/api/state`, { headers: authHeaders() });

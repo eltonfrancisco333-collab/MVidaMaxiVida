@@ -130,6 +130,14 @@ export class FirstRunService {
     };
   }
 
+  async getCurrentSession(token) {
+    const user = await this.getSession(token);
+    return {
+      user,
+      mustChangePassword: await this.credentialRepository.mustChangePassword(user.e.toLowerCase())
+    };
+  }
+
   async assertPasswordChanged(token) {
     const user = await this.getSession(token);
     if (await this.credentialRepository.mustChangePassword(user.e.toLowerCase())) {
@@ -235,7 +243,7 @@ export class FirstRunService {
   }
 
   async logout(token) {
-    if (!this.sessions.delete(token)) throw new ApiError(401, 'A sessão expirou. Inicie sessão novamente.');
+    this.sessions.delete(token);
     return { success: true };
   }
 

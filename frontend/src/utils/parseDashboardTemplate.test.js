@@ -25,6 +25,15 @@ test('the login flow preserves the authenticated user while loading authorized s
   assert.doesNotMatch(stateLoader, /\bUSER\s*=\s*null\b/);
 });
 
+test('the bridge restores a cookie-backed session after a page refresh', async () => {
+  const bridge = await readFile(bridgePath, 'utf8');
+
+  assert.match(bridge, /fetch\('\/api\/auth\/session'\)/);
+  assert.match(bridge, /window\.mvidaAuth\.setSession\(session\)/);
+  assert.match(bridge, /entrar\(session\.user,\s*\{\s*restored:\s*true\s*\}\)/);
+  assert.match(bridge, /if \(\(!authToken && !window\.mvidaAuth\.user\) \|\| MUST_CHANGE_PASSWORD\) return/);
+});
+
 test('the dashboard follows the completed-consultation payment workflow', async () => {
   const dashboard = await readFile(dashboardPath, 'utf8');
 

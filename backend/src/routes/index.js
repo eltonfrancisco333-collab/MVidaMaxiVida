@@ -23,6 +23,9 @@ export function createRouter(stateAccessService, firstRunService, options) {
     if (requestUrl.pathname === '/api/auth/login' && request.method === 'POST') {
       return firstRunController(request, response);
     }
+    if (requestUrl.pathname === '/api/auth/session' && request.method === 'GET') {
+      return firstRunController(request, response);
+    }
     if (['/api/auth/logout', '/api/auth/change-password', '/api/users/password/reset', '/api/users/access'].includes(requestUrl.pathname)) {
       if (request.method !== 'POST') return sendJson(response, 405, { error: 'Método não permitido.' });
       return firstRunController(request, response);

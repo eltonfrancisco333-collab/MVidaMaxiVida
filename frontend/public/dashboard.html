@@ -1021,7 +1021,7 @@ Q('#esp input').forEach(c=>c.onchange=()=>{ESF[c.dataset.e]=c.checked;rco()});
 const PERMS={Administrador:['Início','Consultas','Pacientes','Pagamentos','Serviços','Relatórios','Funcionários','Utilizadores','Auditoria','Sobre'],Médico:['Início','Consultas','Sobre'],Recepção:['Início','Consultas','Pacientes','Pagamentos','Serviços','Sobre'],Financeiro:['Início','Pagamentos','Sobre']};
 const lerr=m=>{$('ler').textContent=m;$('ler').style.display=m?'':'none'};
 function openPasswordChange(required){form(required?'Alterar palavra-passe':'Alterar a minha palavra-passe',`<div class="fg">${fi('Palavra-passe actual','','password','current-password')}${fi('Nova palavra-passe (mínimo 5 caracteres)','','password','new-password')}${fi('Confirmar nova palavra-passe','','password','confirm-password')}</div>`,async()=>{const currentPassword=$('current-password').value,newPassword=$('new-password').value;if(newPassword.length<5){toast('A nova palavra-passe deve ter pelo menos 5 caracteres.');return false}if(newPassword!==$('confirm-password').value){toast('As novas palavras-passe não coincidem.');return false}const updatedSession=await window.mvidaAuth.changePassword(currentPassword,newPassword);MUST_CHANGE_PASSWORD=false;USER=updatedSession.user;entrar(USER);lg('Alteração de palavra-passe','Utilizador alterou a sua palavra-passe','Informação');toast('Palavra-passe alterada com sucesso.');return true},'Guardar nova palavra-passe');if(required){$('gf').querySelector('.gc')?.remove();$('gx').style.display='none'}}
-function entrar(u){
+function entrar(u,{restored=false}={}){
   USER=u;
   const account=US.find(x=>x?.e?.toLowerCase()===u.e.toLowerCase());
   if(account){account.pf=u.pf;account.protectedAdministrator=u.protectedAdministrator===true}
@@ -1033,9 +1033,9 @@ function entrar(u){
   Q('header .user b')[0].textContent=u.n;Q('header .user small')[0].textContent=u.pf;Q('header .user .av')[0].textContent=ini(u.n);
   const welcome={Administrador:'Bem-vindo ao painel do administrador',Recepção:'Bem-vindo ao painel da recepção',Médico:'Bem-vindo ao painel do médico',Financeiro:'Bem-vindo ao painel financeiro'};
   Q('.ht')[0].textContent=`${welcome[u.pf]||'Bem-vindo ao painel'}, ${u.n}!`;
-  lg('Início de sessão','Utilizador entrou no sistema','Informação');
+  if(!restored)lg('Início de sessão','Utilizador entrou no sistema','Informação');
   const firstVisible=Q('nav a').find(a=>a.style.display!=='none');firstVisible?.click();
-  toast('Sessão iniciada');
+  if(!restored)toast('Sessão iniciada');
   if(MUST_CHANGE_PASSWORD)openPasswordChange(true)
 }
 $('lf').onsubmit=e=>{e.preventDefault();const id=V('li').toLowerCase(),pw=$('lp').value;if(!id||!pw){lerr('Indique o e-mail e a palavra-passe.');return}const u=US.find(x=>x.e.toLowerCase()===id||x.n.toLowerCase()===id);if(!u){lerr('E-mail ou palavra-passe incorrectos.');return}if(u.st!=='Activa'){lerr('Esta conta está desactivada. Contacte o administrador.');return}lerr('');entrar(u)};
