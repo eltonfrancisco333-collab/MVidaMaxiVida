@@ -249,6 +249,40 @@ As respostas de erro são convertidas para JSON. O servidor aplica validação e
 
 Os nomes acima descrevem padrões observáveis no código; não significam uma implementação completa de todas as variantes académicas desses padrões. Em particular, o armazenamento JSON limita transacções e concorrência a uma instância.
 
+### 6.3 Princípios apresentados na apresentação
+
+A tabela regista os princípios mostrados nos slides e distingue as orientações gerais daquilo que é verificável nesta versão do código.
+
+| Princípio | Significado simples | Correspondência no projecto |
+|---|---|---|
+| Responsabilidade única (S) | Cada módulo deve ter uma responsabilidade clara. | Observável na separação entre rotas, controllers, serviços e repositórios. |
+| Aberto e fechado (O) | Permitir extensão sem alterar comportamento estável. | É uma orientação de desenho; o código não garante esta propriedade para todas as funcionalidades. |
+| Substituição de Liskov (L) | Uma implementação derivada deve respeitar o contrato da base. | Não demonstrado: não há hierarquia de subclasses de domínio que permita afirmar a aplicação deste princípio. |
+| Segregação de interfaces (I) | Cada consumidor deve depender apenas das operações de que precisa. | Não formalizado: o projecto usa módulos JavaScript, sem interfaces explícitas para estes contratos. |
+| Inversão de dependência (D) | Separar a composição das dependências das regras de negócio. | Parcialmente observável: `createApiServer` compõe repositórios e serviços e passa dependências aos construtores; as dependências continuam a ser classes concretas. |
+| DRY | Evitar duplicar regras e manter uma única fonte para cada comportamento. | As regras de domínio são centralizadas nos serviços. A afirmação do slide de que um único modelo de documento serve o ecrã e o PDF não está confirmada no código actual. |
+| Separação de responsabilidades | Manter interface, regras e persistência em componentes distintos. | Observável na separação entre `frontend/` e `backend/src/`, e nas camadas do backend. |
+| Privilégio mínimo | Cada perfil só deve aceder aos dados e operações necessários. | Implementado na projecção por perfil e nas verificações de acesso de `StateAccessService`. |
+
+### 6.4 Padrões mencionados na apresentação
+
+Os slides também apresentam os padrões abaixo e exemplos de utilização. Esta tabela preserva esse conteúdo, mas indica separadamente se a implementação correspondente existe nesta versão do repositório.
+
+| Categoria | Padrão | Finalidade apresentada | Estado no código actual |
+|---|---|---|---|
+| Criacional | Factory Method | Escolher a implementação de pagamento adequada sem espalhar essa decisão pelo código. | Não identificado como padrão: não existe uma fábrica de pagamentos nem o módulo `domain/pagamentos.js` referido no slide. |
+| Criacional | Builder | Construir um pedido de consulta passo a passo. | Não identificado como padrão: não existe `consultaBuilder.js`; a validação e criação de consultas são tratadas pelos serviços existentes. |
+| Criacional | Singleton | Partilhar uma única instância de um barramento de eventos. | Não identificado: o backend não contém o barramento de eventos descrito no slide. |
+| Estrutural | Repository | Esconder os detalhes de persistência atrás de operações de dados. | Implementado por `StateRepository` e `CredentialRepository`, que isolam a leitura e gravação dos ficheiros JSON. |
+| Estrutural | Fachada de serviço | Coordenar várias operações através de uma interface de serviço. | Há serviços que coordenam regras e dependências, como `PublicBookingService` e `StateAccessService`; não há uma classe identificada especificamente como Fachada. |
+| Comportamental | Observer + EDA | Reagir a eventos para notificar ou auditar sem misturar essas tarefas com a operação principal. | Não identificado no backend: não existe o barramento e conjunto de observadores descritos nos slides. O `MutationObserver` do frontend observa alterações no DOM e não corresponde a esse fluxo de eventos de negócio. |
+| Comportamental | State | Alterar o comportamento conforme o estado da consulta. | Os estados e transições são validados em `StateAccessService`, mas não há classes de estado que implementem formalmente o padrão State. |
+| Comportamental | Strategy | Seleccionar algoritmos diferentes para métodos de pagamento ou canais. | Não identificado como padrão: não há estratégias intercambiáveis por método de pagamento ou canal. |
+| Comportamental | Chain of Responsibility | Executar validações em sequência até uma falhar. | Existem validações de data, horário, dívida e conflito nos serviços; não há uma cadeia de handlers que implemente formalmente este padrão. |
+| Comportamental | Template Method | Reutilizar um fluxo fixo com etapas especializadas por tipo de relatório. | Não identificado: os relatórios não estão organizados numa hierarquia de templates e subclasses como descrito no slide. |
+
+Os caminhos `domain/eventos.js`, `domain/estados.js`, `domain/validacao.js`, `domain/relatorios.js`, `consultaBuilder.js` e `pagamentos.js` mostrados nos slides não existem nesta versão do projecto. A documentação não os apresenta como ficheiros implementados.
+
 ## 7. Tecnologias e ferramentas
 
 | Tecnologia | Utilização |
