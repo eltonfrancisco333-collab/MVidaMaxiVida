@@ -14,11 +14,7 @@
 9. [Segurança, privacidade e limitações](#9-segurança-privacidade-e-limitações)
 10. [Instalação e execução](#10-instalação-e-execução)
 11. [Testes e critérios de validação](#11-testes-e-critérios-de-validação)
-12. [Implantação](#12-implantação)
-13. [Trabalho futuro](#13-trabalho-futuro)
-14. [Conclusão](#14-conclusão)
-15. [Referências](#15-referências)
-16. [Glossário](#16-glossário)
+12. [Conclusão](#12-conclusão)
 
 ---
 
@@ -32,7 +28,7 @@ Este documento tem finalidade simultaneamente descritiva e técnica: explica com
 
 ### 1.1 Organização do relatório
 
-O relatório começa pela definição do problema e dos objectivos. Em seguida descreve as funções, a arquitectura e os padrões utilizados. As secções finais apresentam instalação, testes, implantação, limitações, trabalho futuro e conclusão.
+O relatório começa pela definição do problema e dos objectivos. Em seguida descreve as funções, a arquitectura e os padrões utilizados. As secções finais apresentam instalação e testes, seguidos da conclusão.
 
 ## 2. Problema, objectivos e âmbito
 
@@ -347,9 +343,9 @@ O directório `backend/data/` é ignorado pelo Git para evitar versionar dados l
 
 ### 9.2 Limitações importantes
 
-O armazenamento actual é JSON em disco. Sessões, limites de tentativas, limites de marcação e coordenação de escritas são mantidos em memória. Por consequência, esta solução é destinada a **uma única instância** e não oferece coordenação distribuída entre réplicas.
+O armazenamento actual é JSON em disco e não oferece transacções de base de dados. Sessões e limites de tentativas e marcação são mantidos em memória e reiniciam com o processo; os limites não substituem protecção no ingress.
 
-O repositório não implementa uma base de dados transaccional, encriptação dos ficheiros clínicos em repouso, cópias de segurança externas configuradas nem testes de restauro. Os limites de login e marcação são locais à instância e reiniciam com o processo; não substituem protecção no ingress. O projecto também não contém uma avaliação formal de privacidade ou certificação de conformidade regulatória.
+O repositório não implementa encriptação dos ficheiros clínicos em repouso, cópias de segurança externas configuradas nem testes de restauro. O projecto também não contém uma avaliação formal de privacidade ou certificação de conformidade regulatória.
 
 **Não utilizar a implantação pública com dados reais de pacientes até que a instituição implemente e valide controlos de segurança, privacidade, retenção, cópias de segurança, restauro e conformidade aplicáveis.** Para demonstrações, utilizar dados fictícios.
 
@@ -432,70 +428,10 @@ A cobertura existente verifica, entre outros aspectos:
 
 Os testes automatizados não equivalem a auditoria de segurança, teste de carga, validação clínica ou avaliação de usabilidade com pacientes.
 
-## 12. Implantação
-
-O projecto possui configuração para Railway em `railway.json`. O processo compila o frontend com `npm run build` e inicia o backend com `npm start`; o backend serve a API e os ficheiros estáticos na mesma origem. A rota de health check é `/api/health`.
-
-### 12.1 Preparação genérica
-
-```bash
-npm ci
-npm run build
-npm start
-```
-
-Configure, na plataforma:
-
-- `PORT` conforme o ambiente.
-- `MVIDA_DATA_FILE` e `MVIDA_CREDENTIALS_FILE` para caminhos graváveis e persistentes.
-- Um volume persistente para os dois ficheiros.
-- A rota de health check `/api/health`.
-
-Sem armazenamento persistente, os ficheiros podem desaparecer num reinício ou substituição da instância. Não disponibilize os ficheiros de dados como recursos estáticos.
-
-### 12.2 Limites de escala
-
-Não active múltiplas réplicas com o armazenamento actual. O serviço depende de estado em memória para sessões e limites e de revisão local para controlo de concorrência. Para escalar horizontalmente, é necessário migrar para uma base de dados partilhada com transacções e um mecanismo partilhado de sessão/limitação.
-
-## 13. Trabalho futuro
-
-Prioridades recomendadas antes de uso clínico real:
-
-1. Migrar o estado para uma base de dados com transacções e migrações versionadas.
-2. Implementar encriptação em repouso, gestão de chaves e política de retenção.
-3. Configurar cópias de segurança externas, retenção, monitorização e ensaios de restauro.
-4. Rever a política de palavras-passe, gestão de sessão, CSRF, limitação de pedidos e configuração de produção.
-5. Realizar avaliação formal de privacidade e conformidade com a legislação aplicável.
-6. Extrair gradualmente o dashboard legado para componentes React testáveis.
-7. Conduzir testes de usabilidade com pessoal clínico e pacientes, sem usar dados reais até à aprovação institucional.
-8. Definir mecanismos institucionais de comunicação de confirmações e instruções de segurança para códigos privados.
-
-## 14. Conclusão
+## 12. Conclusão
 
 O MVida MAXI VIDA implementa uma base funcional para centralizar tarefas de gestão clínica, com API e interface servidas na mesma aplicação, organização do backend por camadas e controlo de acesso por perfil. Entre as decisões relevantes estão a separação de responsabilidades por controller, serviço e repositório, a validação de regras no servidor e a distinção entre pedido público e consulta confirmada.
 
-A implementação também conserva uma parte da interface num dashboard HTML legado integrado por React. Essa escolha facilita a continuidade, mas indica uma migração ainda em curso. Da mesma forma, o uso de JSON e de mecanismos em memória é simples de operar numa única instância, mas não oferece as propriedades transaccionais, de escala e de recuperação esperadas para um sistema clínico de produção.
+A implementação também conserva uma parte da interface num dashboard HTML legado integrado por React. Essa escolha facilita a continuidade, mas indica uma migração ainda em curso. O uso de JSON e de mecanismos em memória não oferece as propriedades transaccionais e de recuperação esperadas para um sistema clínico de produção.
 
 Conclui-se que o projecto reúne funcionalidades úteis e uma arquitectura compreensível para evolução, mas a sua utilização com dados reais depende da conclusão das medidas de segurança, privacidade, armazenamento, backup e validação institucional identificadas neste relatório.
-
-## 15. Referências
-
-1. Node.js. **Documentação oficial**. Disponível em: <https://nodejs.org/docs/latest/api/>.
-2. React. **Documentação oficial**. Disponível em: <https://react.dev/learn>.
-3. Vite. **Documentação oficial**. Disponível em: <https://vite.dev/guide/>.
-4. IETF. **RFC 9110 — HTTP Semantics**. Disponível em: <https://www.rfc-editor.org/rfc/rfc9110>.
-5. Railway. **Documentação de configuração e implantação**. Disponível em: <https://docs.railway.com/>.
-6. Repositório do projecto. Código-fonte, configuração, testes e documentação interna do MVida MAXI VIDA.
-
-## 16. Glossário
-
-| Termo | Significado neste projecto |
-|---|---|
-| API | Interface HTTP usada pela aplicação para aceder a operações do servidor. |
-| RBAC | Controlo de acesso baseado em funções ou perfis. |
-| Prontuário | Registo do paciente mantido pela clínica. |
-| Pedido público | Solicitação de consulta ainda sujeita a análise e confirmação. |
-| Projecção de dados | Selecção dos campos que um perfil pode consultar. |
-| Revisão do estado | Número usado para detectar gravações baseadas em dados desactualizados. |
-| Repositório | Componente que encapsula acesso à persistência. |
-| Monólito modular | Aplicação implantada como uma unidade, organizada internamente em módulos. |
