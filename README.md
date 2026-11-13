@@ -152,18 +152,7 @@ O acesso do paciente é criado pela clínica e associado a um número de process
 
 A aplicação é um **monólito modular**: frontend, API, regras de negócio e persistência são implantados como um serviço Node.js. O backend está organizado em camadas. Esta descrição não implica microserviços nem uma separação de deploy entre frontend e API.
 
-```mermaid
-flowchart LR
-    U[Utilizador / navegador] --> UI[React e dashboard HTML]
-    UI -->|HTTP same-origin| API[Router e controllers]
-    API --> MW[Middlewares e autenticação]
-    API --> S[Serviços de aplicação e regras de negócio]
-    S --> R[Repositórios]
-    R --> J[(Ficheiros JSON persistentes)]
-    S --> C[(Credenciais JSON separadas)]
-    API --> STATIC[Frontend compilado em dist/]
-    STATIC --> U
-```
+![Diagrama da arquitectura do sistema MVida MAXI VIDA](docs/arquitectura-sistema.svg)
 
 ### 5.2 Frontend
 

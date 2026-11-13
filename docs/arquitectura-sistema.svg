@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 600" role="img" aria-labelledby="title description">
+  <title id="title">Arquitectura do sistema MVida MAXI VIDA</title>
+  <desc id="description">O navegador utiliza a interface React e o dashboard HTML, que comunica por HTTP com a API. A API encaminha as operações para middlewares e serviços. Os serviços acedem aos repositórios, ao estado JSON e às credenciais JSON. O servidor também disponibiliza os ficheiros estáticos compilados.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0 10 5 0 10z" fill="#52718b"/>
+    </marker>
+    <style>
+      .box{fill:#f4f8fb;stroke:#7694ad;stroke-width:2}
+      .primary{fill:#e5f0f7;stroke:#246b9e}
+      .store{fill:#edf5ef;stroke:#54866a}
+      .title{fill:#173650;font:700 19px Arial,sans-serif}
+      .label{fill:#28465e;font:15px Arial,sans-serif}
+      .edge{fill:none;stroke:#52718b;stroke-width:2.5;marker-end:url(#arrow)}
+      .edge-label{fill:#526b80;font:13px Arial,sans-serif}
+    </style>
+  </defs>
+  <rect x="1" y="1" width="1118" height="598" rx="18" fill="#fff" stroke="#d8e2ea"/>
+
+  <path class="edge" d="M560 100v34"/>
+  <path class="edge" d="M560 214v42"/>
+  <path class="edge" d="M430 296 265 374"/>
+  <path class="edge" d="M560 328v38"/>
+  <path class="edge" d="M690 296 850 374"/>
+  <path class="edge" d="M850 454v64"/>
+  <path class="edge" d="M490 454v64"/>
+  <path class="edge" d="M430 175H310"/>
+  <path class="edge" d="M180 134V58h265"/>
+  <text class="edge-label" x="567" y="124">interacção</text>
+  <text class="edge-label" x="567" y="246">HTTP same-origin</text>
+  <text class="edge-label" x="335" y="345">autenticação</text>
+  <text class="edge-label" x="705" y="345">regras de negócio</text>
+  <text class="edge-label" x="860" y="494">estado</text>
+  <text class="edge-label" x="500" y="494">credenciais</text>
+  <text class="edge-label" x="320" y="164">ficheiros estáticos</text>
+
+  <rect class="box primary" x="430" y="30" width="260" height="70" rx="12"/>
+  <text class="title" x="560" y="59" text-anchor="middle">Utilizador</text>
+  <text class="label" x="560" y="82" text-anchor="middle">Navegador</text>
+
+  <rect class="box" x="430" y="134" width="260" height="80" rx="12"/>
+  <text class="title" x="560" y="165" text-anchor="middle">Frontend</text>
+  <text class="label" x="560" y="190" text-anchor="middle">React + dashboard HTML</text>
+
+  <rect class="box primary" x="430" y="256" width="260" height="72" rx="12"/>
+  <text class="title" x="560" y="286" text-anchor="middle">API HTTP</text>
+  <text class="label" x="560" y="310" text-anchor="middle">Router + controllers</text>
+
+  <rect class="box" x="50" y="374" width="260" height="80" rx="12"/>
+  <text class="title" x="180" y="406" text-anchor="middle">Middlewares</text>
+  <text class="label" x="180" y="431" text-anchor="middle">Sessão, autenticação e erros</text>
+
+  <rect class="box" x="360" y="374" width="260" height="80" rx="12"/>
+  <text class="title" x="490" y="406" text-anchor="middle">Serviços</text>
+  <text class="label" x="490" y="431" text-anchor="middle">Regras de negócio</text>
+
+  <rect class="box" x="720" y="374" width="260" height="80" rx="12"/>
+  <text class="title" x="850" y="406" text-anchor="middle">Repositórios</text>
+  <text class="label" x="850" y="431" text-anchor="middle">Leitura e escrita</text>
+
+  <rect class="box store" x="720" y="518" width="260" height="62" rx="12"/>
+  <text class="title" x="850" y="556" text-anchor="middle">Estado clínico JSON</text>
+
+  <rect class="box store" x="360" y="518" width="260" height="62" rx="12"/>
+  <text class="title" x="490" y="556" text-anchor="middle">Credenciais JSON</text>
+
+  <rect class="box" x="50" y="134" width="260" height="80" rx="12"/>
+  <text class="title" x="180" y="165" text-anchor="middle">Frontend compilado</text>
+  <text class="label" x="180" y="190" text-anchor="middle">dist/ servido pelo Node.js</text>
+</svg>
